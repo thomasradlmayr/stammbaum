@@ -1,0 +1,3322 @@
+<!DOCTYPE html>
+<html lang="de"><head>
+<meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-o5CPaBXRzqH4j4G1UbqwnzjsCvC4iqj+yQuMFuBVRkI=' 'sha256-gKouD+qkXQKK0eBWikp9EWTDdL8XaDg9fHtr1DtIoIM='; style-src 'unsafe-inline'; img-src data:; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'"><link rel="icon" href="data:,">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stammbaum-Editor</title>
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1f2933;background:#f4f1ea;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{min-height:44px;min-width:44px;padding:0 14px;border:1px solid #b9c2cc;border-radius:8px;background:#fff;cursor:pointer}
+h2{font-size:19px;margin:0}
+h3{font-size:15px;margin:16px 0 8px}
+
+header{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#2f4858}
+#titel{flex:1;min-width:0;height:44px;border:1px solid transparent;border-radius:8px;background:rgba(255,255,255,.14);color:#fff;padding:0 10px;font-weight:600}
+#titel::placeholder{color:rgba(255,255,255,.6)}
+.seg{display:flex}
+.seg button{padding:0 10px;border-radius:0}
+.seg button:first-child{border-radius:8px 0 0 8px}
+.seg button:last-child{border-radius:0 8px 8px 0;border-left:0}
+.seg button[aria-pressed=true]{background:#ffc857;font-weight:600}
+.deck{position:fixed;left:0;top:0;right:0;bottom:0;z-index:10;overflow:auto;padding:16px;background:#f4f1ea}
+.deck.halb{background:rgba(20,28,40,.6)}
+.kasten{max-width:420px;margin:5vh auto 0;padding:16px;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+.kasten h2{margin-bottom:10px}
+.status{min-height:1.4em;margin:8px 0;font-size:14px;color:#b3261e}
+.status.neutral{color:#556}
+.knopf{display:flex;align-items:center;justify-content:center;min-height:48px;margin:8px 0;padding:0 14px;border-radius:8px;background:#2f4858;color:#fff;font-weight:600;text-decoration:none}
+#startForm .reihe{position:sticky;bottom:0;margin:0 -16px -16px;padding:10px 16px 16px;background:#fff;border-radius:0 0 12px 12px}
+.warnung{margin:8px 0;padding:8px 10px;border-radius:8px;background:#fff4dd;color:#7a4200;font-size:14px;font-weight:600}
+#bSpeichern.offen::after{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:#e4572e;margin-left:8px}
+
+#haupt{flex:1;display:flex;min-height:0}
+#buehne{flex:1;position:relative;min-width:0;min-height:0;overflow:hidden}
+#buehne.d3{background:#cfe6f3}
+#flaeche{position:absolute;left:0;top:0;right:0;bottom:0;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;cursor:grab}
+#welt{position:absolute;left:0;top:0;transform-origin:0 0}
+#welt svg{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible}
+#cv{display:none;width:100%;height:100%}
+.d3 #welt{display:none}
+.d3 #cv{display:block}
+.le{stroke:#b5762a;stroke-width:2;fill:none}
+.lp{stroke-dasharray:6 5}
+.aus{stroke:#c0392b;stroke-width:2.5;fill:none;stroke-linecap:round}
+.lk{stroke:#4a6572;stroke-width:2;fill:none}
+.ring{stroke:#b5762a;stroke-width:1.5;fill:#fff}
+.hd{font-size:11px;fill:#7a4e16;text-anchor:middle}
+.karte{position:absolute;width:160px;height:84px;padding:4px 8px;display:flex;flex-direction:column;justify-content:center;text-align:center;line-height:1.25;border:1px solid #8a9aa9;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15);overflow:hidden}
+.karte span{display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vn{font-weight:600}
+.vn small{font-weight:400;font-size:11px;color:#667}
+.dat{font-size:11px;color:#556}
+.karte.tot{background:#e6e7e9;color:#6a6f76;border-color:#b5b8bd}
+.karte.gewaehlt{outline:3px solid #e4572e;outline-offset:1px}
+
+.zoom{position:absolute;right:10px;bottom:10px;display:flex;gap:6px}
+.zoom button{box-shadow:0 1px 4px rgba(0,0,0,.25)}
+#legende{display:none;position:absolute;left:10px;top:10px;right:10px;flex-wrap:wrap;gap:4px 6px;align-items:center;color:#24332a;font-size:13px;pointer-events:none;transition:opacity .3s}
+.d3 #legende{display:flex}
+#legende span{white-space:nowrap;padding:2px 9px;border-radius:11px;background:rgba(255,255,255,.84);box-shadow:0 1px 3px rgba(20,40,30,.22)}
+#legende i{display:inline-block;width:22px;height:3px;margin-right:6px;vertical-align:middle}#legende i.lf{width:11px;height:11px;border-radius:50%}#hinweis3d{display:none;position:absolute;left:10px;bottom:12px;max-width:calc(100% - 260px);padding:3px 9px;border-radius:11px;background:rgba(255,255,255,.72);box-shadow:0 1px 3px rgba(20,40,30,.2);color:#34443a;font-size:12px;pointer-events:none;transition:opacity .6s}.d3 #hinweis3d{display:block}#hinweis3d .finger{display:none}@media (pointer:coarse){#hinweis3d .maus{display:none}#hinweis3d .finger{display:inline}}@media (max-width:700px){#hinweis3d{right:10px;bottom:62px;max-width:none}#haupt:has(#panel:not([hidden])) #hinweis3d{display:none}}
+
+#start{position:absolute;left:0;top:0;right:0;bottom:0;overflow:auto;padding:16px;background:#f4f1ea}
+#start form{max-width:420px;margin:0 auto;padding:16px;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+#start h2{margin-bottom:12px}
+
+#panel{flex:none;width:340px;overflow-y:auto;padding:12px;background:#fff;border-left:1px solid #cfd6dd}
+label{display:block;font-size:13px;color:#556;margin-bottom:8px}
+label input:not([type=radio]):not([type=checkbox]),label select,label textarea{display:block;width:100%;min-height:44px;margin-top:2px;padding:6px 10px;font-size:16px;color:#1f2933;border:1px solid #b9c2cc;border-radius:8px;background:#fff}
+label textarea{min-height:80px;resize:vertical}
+.pkopf{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.pkopf h2{flex:1;min-width:0;overflow-wrap:anywhere}
+#pZu{font-size:24px;padding:0}
+.reihe{display:flex;gap:8px;margin:10px 0}
+.reihe button{flex:1}
+.primaer{background:#2f4858;color:#fff;border-color:#2f4858}
+.gefahr{width:100%;margin-top:14px;color:#b3261e;border-color:#b3261e}
+.ehe{margin-bottom:8px;padding:8px;border:1px solid #d8dee4;border-radius:10px}
+.link{margin:2px;padding:0 12px;border-radius:22px;background:#eef3f6}
+.ekopf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.kind{display:inline-flex;align-items:center;margin-right:6px}
+.lz{padding:0;font-size:22px;color:#b3261e;border-color:#e3b5b1}
+.ringe{vertical-align:-1px;fill:none;stroke:currentColor;stroke-width:1.5}
+.leer{color:#667;font-size:14px}
+.wahl label{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;font-size:16px;color:inherit}
+.wahl input{width:22px;height:22px;margin:0}
+
+@media (max-width:700px){
+  #haupt{flex-direction:column}
+  #panel{width:auto;max-height:55%;border-left:0;border-radius:16px 16px 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.25);z-index:2;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #panel::before{content:"";display:block;width:44px;height:4px;margin:0 auto 8px;border-radius:2px;background:#c5ccd3}
+  header{gap:6px}
+  header button{padding:0 10px}
+  #bNeu .lang{display:none}
+  #bNeu{font-size:22px;padding:0}
+  #titel{padding:0 6px}
+}
+</style>
+</head>
+<body>
+<header>
+  <input id="titel" type="text" placeholder="Titel des Stammbaums" aria-label="Titel des Stammbaums">
+  <div class="seg">
+    <button type="button" id="b2d" aria-pressed="true">2D</button>
+    <button type="button" id="b3d" aria-pressed="false">3D</button>
+  </div>
+  <button type="button" id="bNeu" aria-label="Person ohne Verbindung anlegen" title="Person ohne Verbindung anlegen">+<span class="lang"> Person</span></button>
+  <button type="button" id="bSpeichern">Speichern</button>
+</header>
+<div id="haupt">
+  <div id="buehne">
+    <div id="flaeche">
+      <div id="welt"></div>
+      <canvas id="cv"></canvas>
+    </div>
+    <div id="legende"><span><i class="lf" style="background:#e8553a"></i>lebend</span><span><i class="lf" style="background:#c5cad0"></i>verstorben</span><span><i style="background:#f2b824"></i>Ehe</span><span><i style="background:repeating-linear-gradient(90deg,#f2b824 0 5px,transparent 5px 9px)"></i>Partnerschaft</span><span><b style="color:#d43c2a">/</b> beendet</span><span><i style="background:#7a5533;height:5px"></i>Ast: Eltern–Kind</span><span id="legRanke" hidden=""><i style="background:#5f8f4a"></i>Ranke: Kind in anderem Baum</span></div><div id="hinweis3d"><span class="maus">Ziehen: drehen · Rechte Maustaste oder Umschalt+Ziehen: verschieben · Mausrad: Zoom · Doppelklick: nah heran</span><span class="finger">1 Finger: drehen · 2 Finger: verschieben und zoomen · Doppeltipp: nah heran</span></div>
+    <div class="zoom">
+      <button type="button" id="zPlus" aria-label="Vergrößern">+</button>
+      <button type="button" id="zMinus" aria-label="Verkleinern">−</button>
+      <button type="button" id="zFit">Einpassen</button>
+    </div>
+    <div id="start" hidden="">
+      <form id="startForm">
+        <h2 id="startTitel">Grundperson anlegen</h2>
+        <div id="startFelder"></div>
+        <div class="reihe"><button type="submit" class="primaer">Anlegen</button><button type="button" id="startAbbr" hidden="">Abbrechen</button></div>
+      </form>
+    </div>
+  </div>
+  <aside id="panel" hidden=""></aside>
+</div>
+<div id="sperre" class="deck" hidden="">
+  <form id="sperrForm" class="kasten">
+    <h2>Diese Datei ist geschützt</h2>
+    <p>Bitte das Passwort eingeben, um den Stammbaum zu öffnen.</p>
+    <label>Passwort<input type="password" id="spPw" autocomplete="off"></label>
+    <p id="spStatus" class="status" role="status"></p>
+    <div class="reihe"><button type="submit" class="primaer" id="spOk">Entsperren</button></div>
+  </form>
+</div>
+<div id="speicherDialog" class="deck halb" hidden="">
+  <form id="sdForm" class="kasten">
+    <h2>Speichern</h2>
+    <div id="sdEingabe">
+      <div class="wahl"><label><input type="checkbox" id="sdVerschl"> Mit Passwort verschlüsseln</label></div>
+      <div id="sdBekannt" hidden="">
+        <p class="leer">Das bisherige Passwort wird wiederverwendet. Haken oben entfernen = Verschlüsselung entfernen.</p>
+        <div class="wahl"><label><input type="checkbox" id="sdAendern"> Passwort ändern</label></div>
+      </div>
+      <div id="sdPw" hidden="">
+        <label>Passwort (mindestens 8 Zeichen)<input type="password" id="sdPw1" autocomplete="new-password"></label>
+        <label>Passwort wiederholen<input type="password" id="sdPw2" autocomplete="new-password"></label>
+        <p class="leer">Tipp: ein langer Satz oder vier zufällige Wörter sind sicherer als ein kurzes Passwort mit Familiennamen.</p>
+      </div>
+      <p id="sdWarnung" class="warnung" hidden="">Passwort vergessen = Daten verloren. Es gibt keine Wiederherstellung.</p>
+      <p id="sdEntf" class="warnung" hidden="">Die Verschlüsselung wird entfernt: Die Datei wird im Klartext gespeichert.</p>
+    </div>
+    <div id="sdFertig" hidden="">
+      <p>Die verschlüsselte Datei ist fertig. Bitte jetzt herunterladen:</p>
+      <a id="sdLink" class="knopf">Datei herunterladen</a>
+    </div>
+    <p id="sdStatus" class="status" role="status"></p>
+    <div class="reihe"><button type="submit" class="primaer" id="sdOk">Speichern</button><button type="button" id="sdAbbr">Abbrechen</button></div>
+  </form>
+</div>
+
+<script type="application/json" id="stammbaum-daten">{"version":1,"titel":"","personen":[],"ehen":[]}</script>
+<script>
+'use strict';
+// Kopie des Dokuments als Grundlage für "Speichern" – auf die leere Programmhülle zurückgesetzt.
+// Wurde die geöffnete Datei z. B. mit "Seite speichern unter" des Browsers erzeugt, kann sie gerenderte Karten,
+// Panel-Inhalte oder offene Dialoge enthalten. Davon darf nichts in eine neu gespeicherte Datei gelangen.
+function bereinige(k) {
+  const q = s => k.querySelector(s), alle = s => Array.from(k.querySelectorAll(s));
+  const nur = (el, erlaubt) => { if (el) Array.from(el.attributes).forEach(a => { if (erlaubt.indexOf(a.name) < 0) el.removeAttribute(a.name); }); };
+  const fremd = (el, erlaubt) => {
+    if (el) Array.from(el.childNodes).forEach(n => {
+      if (n.nodeType === 1 ? !n.matches(erlaubt) : n.nodeType !== 3 || n.textContent.trim()) n.remove();
+    });
+  };
+  // Nur die bekannten Teile von Kopf und Rumpf behalten
+  nur(k, ['lang']); nur(q('head'), []); nur(q('body'), []);
+  fremd(q('head'), 'meta[charset],meta[name=viewport],title,style');
+  fremd(q('body'), 'header,#haupt,#sperre,#speicherDialog,script');
+  alle('head style').slice(1).forEach(el => el.remove());
+  alle('body script').forEach((el, i) => { if (i > 1) el.remove(); });
+  if (q('title')) q('title').textContent = 'Stammbaum-Editor';
+  // Alles leeren, was das Programm zur Laufzeit befüllt
+  ['#welt', '#panel', '#startFelder', '#spStatus', '#sdStatus'].forEach(s => { if (q(s)) q(s).textContent = ''; });
+  if (q('#startTitel')) q('#startTitel').textContent = 'Grundperson anlegen';
+  // Sichtbarkeit und Zustände wie im Auslieferungszustand
+  ['#panel', '#start', '#startAbbr', '#sperre', '#speicherDialog', '#sdBekannt', '#sdPw', '#sdWarnung', '#sdEntf', '#sdFertig'].forEach(s => { if (q(s)) q(s).setAttribute('hidden', ''); });
+  ['#sdEingabe', '#sdOk', '#spOk'].forEach(s => { if (q(s)) { q(s).removeAttribute('hidden'); q(s).removeAttribute('disabled'); } });
+  ['header', '#haupt'].forEach(s => { if (q(s)) q(s).removeAttribute('inert'); });
+  nur(q('#buehne'), ['id']); nur(q('#welt'), ['id']); nur(q('#cv'), ['id']);
+  nur(q('#bSpeichern'), ['type', 'id']); nur(q('#sdLink'), ['id', 'class']);
+  if (q('#b2d')) q('#b2d').setAttribute('aria-pressed', 'true');
+  if (q('#b3d')) q('#b3d').setAttribute('aria-pressed', 'false');
+  ['#spStatus', '#sdStatus'].forEach(s => { if (q(s)) q(s).setAttribute('class', 'status'); });
+  alle('input,textarea,select,option').forEach(el => { ['value', 'checked', 'selected', 'disabled'].forEach(a => el.removeAttribute(a)); });
+  alle('textarea').forEach(el => { el.textContent = ''; });
+  return k;
+}
+// Erst das geöffnete Dokument selbst zurücksetzen (alte Karten, offenes Panel oder Dialoge aus einer
+// "verschmutzten" Datei verschwinden), dann die Kopie für das Speichern nehmen.
+const vorlage = bereinige(document.documentElement).cloneNode(true);
+
+const $ = s => document.querySelector(s);
+const KW = 160, KH = 84, SLOT = 230, ZH = 174;
+const LESBAR = 0.7; // kleinste Skalierung der Grundansicht (Karte dann ca. 59 px hoch)
+const RINGE = '<svg class="ringe" viewBox="0 0 20 12" width="20" height="12"><circle cx="7" cy="6" r="4.5"/><circle cx="13" cy="6" r="4.5"/></svg>';
+const FELDER = ['vorname', 'zweitname', 'nachname', 'geburtsdatum', 'sterbedatum', 'notiz'];
+
+let daten = { version: 2, titel: '', personen: [], ehen: [] };
+let gesperrt = null; // verschlüsselter Datenblock, solange die Datei noch nicht entsperrt ist
+let basis = null;    // Schlüsselmaterial aus dem Passwort (nicht auslesbarer CryptoKey) – nur im Arbeitsspeicher
+// Übernimmt geladene Daten. Ältere Dateien (Version 1) kennen die neueren Felder noch nicht: Standardwerte ergänzen.
+// Falsche Datentypen (z. B. eine Zahl als Datum) werden in Text umgewandelt, damit eine kaputte Datei nie die Anzeige sprengt.
+function uebernimm(d) {
+  if (!(d && Array.isArray(d.personen) && Array.isArray(d.ehen))) return false;
+  const text = v => v == null ? '' : String(v), objekt = x => x && typeof x === 'object' && !Array.isArray(x);
+  const liste = v => Array.isArray(v) ? v.map(text) : [];
+  daten = d;
+  daten.version = 2;
+  daten.titel = text(d.titel);
+  daten.personen = d.personen.filter(objekt);
+  daten.personen.forEach(p => {
+    p.id = text(p.id) || 'p' + Math.random().toString(36).slice(2, 9);
+    FELDER.forEach(f => { p[f] = text(p[f]); });
+    p.sterbedatumUnbekannt = p.sterbedatumUnbekannt === true && !p.sterbedatum;
+    p.adresse = text(p.adresse);
+  });
+  daten.ehen = d.ehen.filter(objekt);
+  daten.ehen.forEach(e => {
+    e.id = text(e.id) || 'e' + Math.random().toString(36).slice(2, 9);
+    e.partner = liste(e.partner); e.kinder = liste(e.kinder);
+    e.heiratsdatum = text(e.heiratsdatum);
+    e.art = e.art === 'partnerschaft' ? 'partnerschaft' : 'ehe';
+    e.endedatum = text(e.endedatum);
+  });
+  return true;
+}
+try {
+  const d = JSON.parse($('#stammbaum-daten').textContent);
+  if (d && d.verschluesselt) gesperrt = d; else uebernimm(d);
+} catch (e) { /* leerer Stammbaum */ }
+
+/* ---------- Verschlüsselung (Web Crypto: PBKDF2-SHA-256 -> AES-GCM 256) ---------- */
+const ITERATIONEN = 600000;
+const kannKrypto = () => !!(window.crypto && crypto.subtle && window.TextEncoder);
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+const unb64 = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; };
+const basisAus = pw => crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+const aesAus = (b, salt, iter) => crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: salt, iterations: iter }, b, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+// Verschlüsselt einen Text; Salt und IV werden bei jedem Aufruf neu gewürfelt.
+async function verschluessle(b, text) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, await aesAus(b, salt, ITERATIONEN), new TextEncoder().encode(text));
+  return { verschluesselt: true, v: 1, kdf: 'PBKDF2-SHA256', iter: ITERATIONEN, salt: b64(salt), iv: b64(iv), ct: b64(new Uint8Array(ct)) };
+}
+// Entschlüsselt einen Datenblock; wirft bei falschem Passwort oder veränderten Daten.
+async function entschluessle(b, block) {
+  // Nur ein enger Bereich der Iterationszahl gilt: eine Datei mit z. B. 1 Iteration wird als beschädigt abgelehnt.
+  if (block.v !== 1 || block.kdf !== 'PBKDF2-SHA256' || !Number.isInteger(block.iter) || block.iter < ITERATIONEN || block.iter > 2000000) throw new Error('Format');
+  const klar = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(block.iv) }, await aesAus(b, unb64(block.salt), block.iter), unb64(block.ct));
+  return new TextDecoder().decode(klar);
+}
+
+const fl = $('#flaeche'), welt = $('#welt'), cv = $('#cv'), ctx = cv.getContext('2d');
+const buehne = $('#buehne'), panel = $('#panel');
+let L, auswahl = null, ansicht = 'person', modus3d = false, offen = false;
+let tx = 0, ty = 0, sk = 1;
+const cam = { X: 0, Y: 0, Z: 0, yaw: 0.5, pitch: 0.35, dist: 3000 }; // 3D-Kamera: Zielpunkt, Drehung, Blickhöhe, Abstand
+let p3 = new Map(), treffer = [];
+
+/* ---------- Hilfen ---------- */
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fd = d => d ? d.split('-').reverse().join('.') : '';
+const istTot = p => !!(p.sterbedatum || p.sterbedatumUnbekannt);
+// Beschriftung einer Verbindung – gemeinsam für 2D und 3D. Ehe: Heiratsdatum; Partnerschaft: „seit Jahr“;
+// beendet (Scheidung/Trennung): „Jahr – Jahr“.
+function eheText(e) {
+  const jahr = d => d ? d.slice(0, 4) : '';
+  if (e.endedatum) return e.heiratsdatum ? jahr(e.heiratsdatum) + ' – ' + jahr(e.endedatum) : 'bis ' + jahr(e.endedatum);
+  if (e.art === 'partnerschaft') return e.heiratsdatum ? 'seit ' + jahr(e.heiratsdatum) : '';
+  return fd(e.heiratsdatum);
+}
+const grenze = (v, a, b) => Math.max(a, Math.min(b, v));
+const person = id => daten.personen.find(p => p.id === id);
+const nameVon = p => [p.vorname, p.nachname].map(s => (s || '').trim()).filter(Boolean).join(' ') || 'Unbenannt';
+const nachName = (a, b) => nameVon(a).localeCompare(nameVon(b), 'de');
+const neueId = pre => pre + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+function geaendert() {
+  offen = true;
+  const b = $('#bSpeichern');
+  b.classList.add('offen');
+  b.title = 'Ungespeicherte Änderungen';
+}
+function raeumeAuf(ehen) {
+  for (let i = ehen.length - 1; i >= 0; i--) {
+    const e = ehen[i];
+    if (!e.partner.length || (e.partner.length < 2 && !e.kinder.length)) ehen.splice(i, 1);
+  }
+}
+function aufraeumen() { raeumeAuf(daten.ehen); }
+
+/* ---------- Verbindungen ändern – mit einer gemeinsamen Prüfung ---------- */
+// Sind die Generationen widerspruchsfrei? Partner stehen in derselben Generation, Kinder sind jünger als
+// ihre Eltern. Ein Kreis aus diesen Regeln (z. B. Kind = Vorfahre oder Partner = eigenes Kind) ist ein Widerspruch.
+function stimmig(ehen) {
+  const chef = new Map();
+  const finde = x => {
+    if (!chef.has(x)) chef.set(x, x);
+    let r = x;
+    while (chef.get(r) !== r) r = chef.get(r);
+    chef.set(x, r);
+    return r;
+  };
+  for (const e of ehen) for (let i = 1; i < e.partner.length; i++) chef.set(finde(e.partner[i]), finde(e.partner[0]));
+  const nach = new Map(), grad = new Map();
+  for (const e of ehen) for (const q of e.partner) for (const k of e.kinder) {
+    const a = finde(q), b = finde(k);
+    if (a === b) return false;
+    if (!nach.has(a)) nach.set(a, []);
+    nach.get(a).push(b);
+    grad.set(b, (grad.get(b) || 0) + 1);
+    if (!grad.has(a)) grad.set(a, 0);
+  }
+  const frei = [];
+  grad.forEach((g, k) => { if (!g) frei.push(k); });
+  let n = 0;
+  while (frei.length) {
+    n++;
+    (nach.get(frei.pop()) || []).forEach(b => { grad.set(b, grad.get(b) - 1); if (!grad.get(b)) frei.push(b); });
+  }
+  return n === grad.size;
+}
+// Probiert eine Änderung auf einer Kopie der Verbindungen aus.
+function erlaubt(aendere) {
+  const k = daten.ehen.map(e => ({ id: e.id, partner: e.partner.slice(), heiratsdatum: e.heiratsdatum, kinder: e.kinder.slice() }));
+  if (!stimmig(k)) return true; // Daten sind schon widersprüchlich: nicht zusätzlich blockieren
+  aendere(k);
+  return stimmig(k);
+}
+function ausfuehren(aendere) {
+  if (!erlaubt(aendere)) {
+    alert('Das passt nicht zusammen: Dadurch wäre jemand zugleich Vorfahre und Nachkomme (oder Partner) derselben Person. Die Verbindung wurde nicht angelegt.');
+    return false;
+  }
+  aendere(daten.ehen);
+  return true;
+}
+// Kind in genau eine Eltern-Verbindung hängen: in die Ehe "eheId" oder zu den Personen in "eltern" (1 oder 2).
+function opKind(ehen, kind, eheId, eltern, datum) {
+  ehen.forEach(e => { e.kinder = e.kinder.filter(k => k !== kind); });
+  let e = eheId ? ehen.find(x => x.id === eheId)
+    : ehen.find(x => x.partner.length === eltern.length && eltern.every(q => x.partner.indexOf(q) >= 0));
+  if (!e) { e = { id: neueId('e'), partner: eltern.slice(), heiratsdatum: eltern.length > 1 ? datum || '' : '', kinder: [], art: 'ehe', endedatum: '' }; ehen.push(e); }
+  e.kinder.push(kind);
+  raeumeAuf(ehen);
+}
+function opHeirat(ehen, a, b, datum, art, ende) {
+  ehen.push({ id: neueId('e'), partner: [a, b], heiratsdatum: datum || '', kinder: [], art: art === 'partnerschaft' ? art : 'ehe', endedatum: ende || '' });
+}
+// Zweiten Elternteil ergänzen. Ohne "alle": nur dieses Kind bekommt die Paar-Verbindung (die bestehende Ehe der
+// beiden oder eine neue), seine Geschwister bleiben beim einen Elternteil. Mit "alle": alle Kinder der
+// Ein-Elternteil-Verbindung bekommen den zweiten Elternteil.
+function opZweiter(ehen, kind, eheId, b, datum, alle) {
+  const e = ehen.find(x => x.id === eheId), a = e.partner[0];
+  const paar = ehen.find(x => x.partner.length === 2 && x.partner.indexOf(a) >= 0 && x.partner.indexOf(b) >= 0);
+  if (!alle) opKind(ehen, kind, '', [a, b], datum);
+  else if (paar) e.kinder.slice().forEach(k => opKind(ehen, k, paar.id));
+  else { e.partner.push(b); e.heiratsdatum = datum || ''; }
+}
+function felderHtml(p) {
+  return '<label>Vorname<input type="text" data-f="vorname" value="' + esc(p.vorname) + '"></label>' +
+    '<label>Zweiter Vorname<input type="text" data-f="zweitname" value="' + esc(p.zweitname) + '"></label>' +
+    '<label>Nachname<input type="text" data-f="nachname" value="' + esc(p.nachname) + '"></label>' +
+    '<label>Geburtsdatum<input type="date" data-f="geburtsdatum" value="' + esc(p.geburtsdatum) + '"></label>' +
+    '<label>Sterbedatum<input type="date" data-f="sterbedatum" value="' + esc(p.sterbedatum) + '"></label>' +
+    '<div class="wahl"><label><input type="checkbox" data-f="sterbedatumUnbekannt"' + (p.sterbedatumUnbekannt && !p.sterbedatum ? ' checked' : '') + (p.sterbedatum ? ' disabled' : '') + '> verstorben, Datum unbekannt</label></div>' +
+    '<label>Adresse<textarea data-f="adresse">' + esc(p.adresse) + '</textarea></label>' +
+    '<label>Notiz<textarea data-f="notiz">' + esc(p.notiz) + '</textarea></label>';
+}
+function liesFelder(el) {
+  const p = {};
+  el.querySelectorAll('[data-f]').forEach(i => { p[i.dataset.f] = i.type === 'checkbox' ? i.checked : i.value.trim(); });
+  if (p.sterbedatum) p.sterbedatumUnbekannt = false; // ein eingetragenes Datum gilt
+  return p;
+}
+// Liest eine neue Person aus einem Formular (ohne sie schon anzulegen).
+function lesePerson(el) {
+  const n = liesFelder(el);
+  if (!n.vorname && !n.nachname) { alert('Bitte mindestens einen Vor- oder Nachnamen eingeben.'); return null; }
+  return Object.assign({ id: neueId('p') }, n);
+}
+function neuePerson(el) {
+  const p = lesePerson(el);
+  if (p) daten.personen.push(p);
+  return p;
+}
+
+/* ---------- Layout (Generationen + x-Positionen) ---------- */
+function layout() {
+  const P = daten.personen, n = P.length;
+  const gen = new Map(P.map(p => [p.id, 0]));
+  // Geschwister nur in der Anzeige nach Alter ordnen, Älteste links (die Daten bleiben unverändert; 3D übernimmt die Folge).
+  // Geburtsdatum "JJJJ-MM-TT", auch nur "JJJJ" oder "JJJJ-MM": Zahl JJJJMMTT, fehlender Monat/Tag zählt als 0.
+  // Ohne auswertbares Jahr: hinter alle mit Datum. sort ist stabil, bei Gleichstand bleibt die bisherige Reihenfolge.
+  const geb = new Map(P.map(p => {
+    const m = /^(\d{4})(?:-(\d\d?)(?:-(\d\d?))?)?/.exec(p.geburtsdatum);
+    return [p.id, m ? m[1] * 10000 + (+m[2] || 0) * 100 + (+m[3] || 0) : Infinity];
+  }));
+  const F = daten.ehen.map(e => ({
+    e: e,
+    pa: e.partner.filter(id => gen.has(id)).slice(0, 2),
+    ki: e.kinder.filter(id => gen.has(id)).sort((a, b) => (geb.get(a) - geb.get(b)) || 0)
+  })).filter(f => f.pa.length);
+
+  // Generation: Partner gleich hoch, Kinder eine Zeile tiefer. Begrenzt, damit Zyklen nicht hängen.
+  for (let r = 0; r < n + 2; r++) {
+    let neu = false;
+    for (const f of F) {
+      const g = Math.max.apply(null, f.pa.map(id => gen.get(id)));
+      for (const id of f.pa) if (gen.get(id) < g) { gen.set(id, g); neu = true; }
+      const kg = Math.min(g + 1, n);
+      for (const id of f.ki) if (gen.get(id) < kg) { gen.set(id, kg); neu = true; }
+    }
+    if (!neu) break;
+  }
+
+  const ehenVon = new Map(P.map(p => [p.id, []])), eltern = new Map();
+  for (const f of F) {
+    f.pa.forEach(id => ehenVon.get(id).push(f));
+    f.ki.forEach(id => { if (!eltern.has(id)) eltern.set(id, f); });
+  }
+
+  // Reihenfolge je Zeile: Tiefensuche, Partner nebeneinander.
+  const zeilen = [], platz = new Set(), besucht = new Set();
+  const setze = id => {
+    if (platz.has(id)) return;
+    platz.add(id);
+    const g = gen.get(id);
+    (zeilen[g] || (zeilen[g] = [])).push(id);
+  };
+  const besuche = id => {
+    if (besucht.has(id)) return;
+    besucht.add(id);
+    const fs = ehenVon.get(id), frei = [];
+    fs.forEach(f => f.pa.forEach(q => { if (q !== id && !platz.has(q) && frei.indexOf(q) < 0) frei.push(q); }));
+    if (!platz.has(id) && frei.length > 1) setze(frei.shift());
+    setze(id);
+    frei.forEach(setze);
+    fs.forEach(f => f.ki.forEach(besuche));
+    fs.forEach(f => f.pa.forEach(besuche));
+  };
+  P.filter(p => !eltern.has(p.id)).sort((a, b) => gen.get(a.id) - gen.get(b.id)).forEach(p => besuche(p.id));
+  P.forEach(p => besuche(p.id));
+
+  const pos = new Map();
+  for (let g = 0; g < zeilen.length; g++) {
+    const z = zeilen[g] || (zeilen[g] = []);
+    z.forEach((id, i) => pos.set(id, { x: i * SLOT, y: g * ZH, g: g, i: i }));
+  }
+  const nachbarn = (a, b) => a.g === b.g && Math.abs(a.i - b.i) === 1;
+  const schiebe = (g, i, d) => { const z = zeilen[g]; for (let k = i; k < z.length; k++) pos.get(z[k]).x += d; };
+  const anker = f => {
+    const q = f.pa.map(id => pos.get(id)).sort((a, b) => a.x - b.x);
+    if (q.length < 2) return q[0].x;
+    return nachbarn(q[0], q[1]) ? (q[0].x + q[1].x) / 2 : q[1].x;
+  };
+  const mitte = f => {
+    const xs = f.ki.map(id => pos.get(id).x);
+    return (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2;
+  };
+  const linkester = (ids, id) => ids.reduce((m, q) => pos.get(q).x < pos.get(m).x ? q : m, id);
+
+  // Eltern über Kinder und Kinder unter Eltern rücken (nur nach rechts, feste Zahl Durchläufe).
+  for (let r = 0; r < 3; r++) {
+    for (let g = zeilen.length - 1; g >= 0; g--) for (const id of zeilen[g]) for (const f of ehenVon.get(id)) {
+      if (!f.ki.length || linkester(f.pa, id) !== id) continue;
+      const d = mitte(f) - anker(f);
+      if (d > 1) schiebe(g, pos.get(id).i, d);
+    }
+    for (let g = 0; g < zeilen.length; g++) for (const id of zeilen[g]) {
+      const f = eltern.get(id);
+      if (!f || linkester(f.ki, id) !== id) continue;
+      const d = anker(f) - mitte(f);
+      if (d > 1) schiebe(g, pos.get(id).i, d);
+    }
+  }
+
+  let minX = Infinity, maxX = 0;
+  pos.forEach(q => { minX = Math.min(minX, q.x); });
+  pos.forEach(q => { q.x -= minX; maxX = Math.max(maxX, q.x); });
+  return { pos: pos, F: F, breite: maxX, maxG: Math.max(0, zeilen.length - 1), nachbarn: nachbarn };
+}
+
+// Beschriftung einer Person – gemeinsam für 2D-Karte und 3D-Kugel.
+function kartenText(p) {
+  return {
+    vn: p.vorname || (p.nachname ? '' : 'Unbenannt'),
+    zn: p.zweitname || '',
+    nn: p.nachname || '',
+    dat: [p.geburtsdatum ? '* ' + fd(p.geburtsdatum) : '', p.sterbedatum ? '† ' + fd(p.sterbedatum) : (p.sterbedatumUnbekannt ? '†' : '')].filter(Boolean)
+  };
+}
+
+/* ---------- 2D ---------- */
+function zeichne2d() {
+  let svg = '', html = '';
+  const versatz = {};
+  for (const f of L.F) {
+    const ps = f.pa.map(id => L.pos.get(id)).sort((a, b) => a.x - b.x);
+    const a = ps[0], b = ps[1];
+    let ax = a.x + KW / 2, ay = a.y + KH, ag = a.g; // Startpunkt der Linie zu den Kindern
+    if (b) {
+      // Ehe: Linie mit Ringen; Partnerschaft: gestrichelt ohne Ringe; beendet: zusätzlich ein Schrägstrich.
+      const part = f.e.art === 'partnerschaft', kl = part ? 'le lp' : 'le', text = eheText(f.e);
+      let mx, my;
+      if (L.nachbarn(a, b)) {
+        mx = (a.x + KW + b.x) / 2; my = a.y + KH / 2;
+        svg += '<path class="' + kl + '" d="M' + (a.x + KW) + ' ' + my + 'H' + b.x + '"/>';
+        ax = mx; ay = my;
+      } else {
+        const ac = a.x + KW / 2, bc = b.x + KW / 2;
+        if (a.g === b.g) {
+          mx = (ac + bc) / 2; my = a.y - 14;
+          svg += '<path class="' + kl + '" d="M' + ac + ' ' + a.y + 'V' + my + 'H' + bc + 'V' + b.y + '"/>';
+        } else {
+          mx = (ac + bc) / 2; my = (a.y + b.y + KH) / 2;
+          svg += '<path class="' + kl + '" d="M' + ac + ' ' + (a.y + KH / 2) + 'L' + bc + ' ' + (b.y + KH / 2) + '"/>';
+        }
+        ax = bc; ay = b.y + KH; ag = b.g;
+      }
+      if (!part) svg += '<circle class="ring" cx="' + (mx - 3.5) + '" cy="' + my + '" r="5"/><circle class="ring" cx="' + (mx + 3.5) + '" cy="' + my + '" r="5" fill-opacity="0.6"/>';
+      if (f.e.endedatum) svg += '<path class="aus" d="M' + (mx - 6) + ' ' + (my + 9) + 'L' + (mx + 6) + ' ' + (my - 9) + '"/>';
+      if (text) svg += '<text class="hd" x="' + mx + '" y="' + (my - 12) + '">' + esc(text) + '</text>';
+    }
+    if (f.ki.length) {
+      const nr = versatz[ag] = (versatz[ag] || 0) + 1;
+      const by = ag * ZH + KH + 20 + (nr % 3) * 10;
+      const xs = [ax];
+      let d = '';
+      for (const id of f.ki) {
+        const k = L.pos.get(id), kx = k.x + KW / 2;
+        if (k.y > by) { xs.push(kx); d += 'M' + kx + ' ' + by + 'V' + k.y; }
+        else d += 'M' + ax + ' ' + ay + 'L' + kx + ' ' + (k.y + KH / 2);
+      }
+      if (xs.length > 1) d += 'M' + ax + ' ' + ay + 'V' + by + 'M' + Math.min.apply(null, xs) + ' ' + by + 'H' + Math.max.apply(null, xs);
+      svg += '<path class="lk" d="' + d + '"/>';
+    }
+  }
+  for (const p of daten.personen) {
+    const q = L.pos.get(p.id);
+    const k = kartenText(p), dat = k.dat.join('  ');
+    html += '<button type="button" class="karte' + (istTot(p) ? ' tot' : '') + (p.id === auswahl ? ' gewaehlt' : '') +
+      '" data-id="' + esc(p.id) + '" style="left:' + q.x + 'px;top:' + q.y + 'px">' +
+      '<span class="vn">' + esc(k.vn) + (k.zn ? ' <small>' + esc(k.zn) + '</small>' : '') + '</span>' +
+      '<span>' + esc(k.nn) + '</span>' +
+      (dat ? '<span class="dat">' + esc(dat) + '</span>' : '') + '</button>';
+  }
+  welt.innerHTML = '<svg>' + svg + '</svg>' + html;
+}
+function anwenden() {
+  welt.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + sk + ')';
+}
+function zoomAn(px, py, f) {
+  const ns = grenze(sk * f, 0.002, 3);
+  tx = px - (px - tx) * ns / sk;
+  ty = py - (py - ty) * ns / sk;
+  sk = ns;
+  anwenden();
+}
+
+/* ---------- 3D (Canvas 2D mit eigener Perspektive): der Stammbaum als Obstbaum auf einer Wiese ---------- */
+// Jede Person ist eine Frucht mit Initialen und Namensschild, Eltern–Kind-Verbindungen sind Äste, Paare sitzen
+// auf einem gemeinsamen Zweig. Älteste Generation unten am Stamm, jede jüngere eine Ebene höher und weiter außen.
+const SCHRIFT = 'px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+const S_NAME = '600 13' + SCHRIFT, S_DATUM = '11' + SCHRIFT;
+const PR = 34;                     // Radius einer Frucht (= Person) in Welt-Einheiten
+const NAH = 40;                    // was näher an der Kamera liegt, wird nicht gezeichnet
+const ruhig = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); // dann ohne Kamerafahrten
+const wickel = a => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+const brennweite = (w, h) => 0.56 * (w + h); // Blickwinkel ca. 40 bis 60 Grad: räumlich, aber ohne starke Verzerrung
+const blickY = h => h * 0.58;                // die Blickachse trifft das Bild etwas unter der Mitte: so bleibt oben Himmel sichtbar
+
+let leute = [], aeste = [], baender = [], reihen = [], baeume = [], fams3 = []; // reihen = Bänder und Personen, je Bild nach Tiefe sortiert
+let laub = new Float32Array(0), laubV = new Float32Array(0), wiese = new Float32Array(0); // Laub hinter und vor den Ästen, Blumen
+const camAlt = { X: 0, Y: 0, Z: 0, yaw: 0, pitch: 0, dist: 1 }; // Kamera des letzten Bildes (für: bewegt sie sich schnell oder langsam?)
+let rindeM = null, schattenG = null, schattenB = 0, schattenH = 0; // Rindenmuster für den Stamm; Baumschatten in der aktuellen Größe
+let fuell3 = 0;                                // Anteil der freien Bildhöhe, den die zuletzt eingepasste Ansicht nutzt
+let waermeNr = 0, waermeAn = false;            // Vorab-Erzeugen der Bildgrößen: nächste Nummer; läuft gerade?
+let pkx = new Float32Array(0), pky = new Float32Array(0), pks = new Float32Array(0); // projizierte Punkte der Äste und Bänder
+const nrx = new Float32Array(16), nry = new Float32Array(16);                        // Querrichtung je Astpunkt (Hilfsspeicher)
+let szene = { R: 600, H: 600, yaw: 0.5 };     // Ausdehnung aller Bäume und feste Start-Blickrichtung
+let stand3 = null;                             // Kennung der Daten, für die das 3D-Layout gebaut wurde
+let rollenAlt = true, rollenId = null, hatAuswahl = false; // Hervorhebung (Auswahl, Eltern, Partner, Kinder)
+let schweb = null;                             // Person unter dem Mauszeiger
+let bilder = null;                             // vorgerenderte Bilder (Früchte, Laub, Himmel …), einmal gemalt
+const schilder = [], belegt3 = [], holz3 = [], nah3 = []; // Hilfslisten für Beschriftung und dicke Äste (werden je Bild wiederverwendet)
+let hg = null, hgPh = 0, hgG = 0;             // vorgemalter Hintergrund (Himmel über, Wiese unter dem Horizont) und seine Maße
+
+// Malt alle wiederverwendeten Bilder einmal vor: Früchte, Laub, Rinde, Schatten, Blumen, Wolken. Hier steckt die ganze
+// Feinarbeit (Verläufe, Glanzlichter, einzelne Blätter). Beim Zeichnen eines Bildes werden sie nur noch kopiert.
+function male3d() {
+  const lw = (b, h) => { const c = document.createElement('canvas'); c.width = b; c.height = h; return c; };
+  const wuerfel = saat => { let z = saat; return () => (z = z * 16807 % 2147483647) / 2147483647; };
+  // Dunst (Luftperspektive): Stufe 0 = klar … 3 = fern; 4 und 5 = zurückgenommen (wenn eine andere Person ausgewählt ist)
+  const dunst = (c, g, st) => {
+    if (!st) return;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(218,230,234,' + Math.min(0.72, st * 0.13) + ')'; g.fillRect(0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'source-over';
+  };
+  const mische = (a, b, t) => 'rgb(' + a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(',') + ')';
+  // weicher runder Farbfleck (von f0 in der Mitte nach f1 am Rand)
+  const fleckAuf = (g, x, y, r, f0, f1) => {
+    const v = g.createRadialGradient(x, y, 0, x, y, r);
+    v.addColorStop(0, f0); v.addColorStop(1, f1);
+    g.fillStyle = v; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+  };
+  const B = { himmelOben: '#4f93d8' };
+
+  // Frucht: ein Apfel mit Kelchgrube, Stiel und Blatt, Glanzlicht, dunklem Rand, Widerschein unten und weichem Schatten.
+  // Verstorbene: perlmuttfarben. Gemalt im Feld 256 x 256, Mitte bei (128|144), Radius 88.
+  const umriss = g => {
+    g.beginPath(); g.moveTo(128, 70);
+    g.bezierCurveTo(104, 50, 42, 58, 40, 136); g.bezierCurveTo(38, 198, 94, 236, 128, 230);
+    g.bezierCurveTo(162, 236, 218, 198, 216, 136); g.bezierCurveTo(214, 58, 152, 50, 128, 70);
+    g.closePath();
+  };
+  const frucht = (tot, st, S) => {
+    const c = lw(S, S), g = c.getContext('2d'), zf = wuerfel(77), k = S / 256;
+    g.scale(k, k); g.lineCap = 'round';
+    const bl = g.createLinearGradient(140, 8, 214, 52);
+    bl.addColorStop(0, tot ? '#c1cbb4' : '#9bd960'); bl.addColorStop(1, tot ? '#7f8d74' : '#368a2a');
+    g.fillStyle = bl;
+    g.beginPath(); g.moveTo(136, 46); g.bezierCurveTo(150, 6, 196, -2, 224, 14); g.bezierCurveTo(206, 54, 168, 62, 136, 46); g.fill();
+    g.strokeStyle = tot ? 'rgba(90,100,84,.7)' : 'rgba(34,100,28,.7)'; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(140, 44); g.quadraticCurveTo(176, 24, 216, 17); g.stroke();
+    g.save();
+    g.shadowColor = 'rgba(30,22,8,.5)'; g.shadowBlur = 16 * k; g.shadowOffsetY = 9 * k;
+    const v = g.createRadialGradient(92, 104, 6, 128, 148, 104);
+    (tot ? [[0, '#ffffff'], [0.3, '#eef1f6'], [0.68, '#bcc4d0'], [1, '#6d7683']] : [[0, '#ffb690'], [0.24, '#f3593a'], [0.62, '#cf2a21'], [1, '#7a1210']]).forEach(s => v.addColorStop(s[0], s[1]));
+    g.fillStyle = v; umriss(g); g.fill();
+    g.restore();
+    g.save(); umriss(g); g.clip();
+    if (tot) { // Perlmutt: ein Hauch Rosa und Blau
+      fleckAuf(g, 76, 196, 84, 'rgba(255,196,222,.32)', 'rgba(255,196,222,0)');
+      fleckAuf(g, 190, 120, 84, 'rgba(170,205,255,.36)', 'rgba(170,205,255,0)');
+    } else {   // gelbe Backe, feine Streifen, Sprenkel
+      fleckAuf(g, 178, 198, 80, 'rgba(255,198,72,.4)', 'rgba(255,198,72,0)');
+      g.strokeStyle = 'rgba(255,214,150,.1)'; g.lineWidth = 3;
+      for (let i = 0; i < 16; i++) {
+        const x = 52 + i * 10 + zf() * 6;
+        g.beginPath(); g.moveTo(128 + (x - 128) * 0.3, 74); g.quadraticCurveTo(x + (x - 128) * 0.5, 150, 128 + (x - 128) * 0.5, 228); g.stroke();
+      }
+      g.fillStyle = 'rgba(255,236,196,.4)';
+      for (let i = 0; i < 46; i++) { g.beginPath(); g.arc(52 + zf() * 152, 84 + zf() * 136, 1 + zf() * 1.2, 0, 6.2832); g.fill(); }
+    }
+    const rand = g.createRadialGradient(118, 132, 58, 128, 146, 100);
+    rand.addColorStop(0, 'rgba(0,0,0,0)'); rand.addColorStop(1, tot ? 'rgba(40,50,70,.42)' : 'rgba(60,0,0,.5)');
+    g.fillStyle = rand; g.fillRect(0, 0, 256, 256);
+    fleckAuf(g, 128, 68, 26, tot ? 'rgba(70,80,100,.5)' : 'rgba(80,10,5,.55)', 'rgba(0,0,0,0)');                      // Kelchgrube
+    fleckAuf(g, 156, 214, 46, tot ? 'rgba(255,255,255,.3)' : 'rgba(255,170,130,.28)', 'rgba(255,255,255,0)');         // Widerschein
+    fleckAuf(g, 92, 104, 40, 'rgba(255,255,255,.7)', 'rgba(255,255,255,0)');                                          // Glanz
+    fleckAuf(g, 84, 94, 12, 'rgba(255,255,255,.95)', 'rgba(255,255,255,0)');
+    g.restore();
+    g.strokeStyle = tot ? '#6f675c' : '#5d3f22'; g.lineWidth = 9;
+    g.beginPath(); g.moveTo(128, 76); g.quadraticCurveTo(128, 44, 142, 22); g.stroke();
+    g.strokeStyle = 'rgba(255,225,180,.45)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(125, 72); g.quadraticCurveTo(125, 44, 139, 23); g.stroke();
+    dunst(c, g, st);
+    return c;
+  };
+  B.frucht = [0, 1].map(tot => [0, 1, 2, 3, 4, 5].map(st => frucht(tot, st, 256)));
+  B.fruchtKlein = [0, 1].map(tot => [0, 1, 2, 3, 4, 5].map(st => frucht(tot, st, 64)));
+  B.fruchtG = []; // dieselben Früchte in festen Größen, erst bei Bedarf erzeugt
+
+  // Laub: dichte Büschel aus vielen einzelnen Blättern. Erst die tiefen, dunklen Blätter, zuletzt die hellen im Licht
+  // (oben). Jedes Blatt hat einen kleinen Schatten, einen Verlauf und eine Mittelrippe. Vier Formen, drei Dunst-Stufen.
+  const buschel = (v, st) => {
+    const c = lw(256, 256), g = c.getContext('2d'), zf = wuerfel(11 + v * 37), bl = [];
+    fleckAuf(g, 128, 138, 118, 'rgba(24,70,28,.82)', 'rgba(40,96,36,0)');
+    for (let i = 0; i < 120; i++) {
+      const a = zf() * 6.2832, r = Math.pow(zf(), 0.6) * 98, y = 128 + r * Math.sin(a) * 0.92;
+      bl.push({ x: 128 + r * Math.cos(a), y: y, l: 14 + zf() * 14, w: zf() * 6.2832, h: grenze(1.06 - y / 240 + (zf() - 0.5) * 0.5, 0, 1) });
+    }
+    bl.sort((a, b) => a.h - b.h);
+    for (const b of bl) {
+      const l = b.l, blatt = () => { g.beginPath(); g.moveTo(-l, 0); g.bezierCurveTo(-l * 0.4, -l * 0.62, l * 0.5, -l * 0.5, l, 0); g.bezierCurveTo(l * 0.5, l * 0.5, -l * 0.4, l * 0.62, -l, 0); };
+      g.setTransform(1, 0, 0, 1, b.x + 1.5, b.y + 3.5); g.rotate(b.w);
+      g.fillStyle = 'rgba(6,36,10,.3)'; blatt(); g.fill();
+      g.setTransform(1, 0, 0, 1, b.x, b.y); g.rotate(b.w);
+      const f = g.createLinearGradient(0, -l * 0.5, 0, l * 0.5);
+      f.addColorStop(0, mische([50, 126, 46], [184, 228, 112], b.h)); f.addColorStop(1, mische([26, 88, 36], [104, 180, 68], b.h));
+      g.fillStyle = f; blatt(); g.fill();
+      g.strokeStyle = b.h > 0.5 ? 'rgba(232,250,190,.5)' : 'rgba(8,56,18,.4)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(-l * 0.9, 0); g.lineTo(l * 0.9, 0); g.stroke();
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    // fernes Laub wird nur etwas heller und matter (nicht weiß: es soll Laub bleiben)
+    if (st) { g.globalCompositeOperation = 'source-atop'; g.fillStyle = 'rgba(196,224,196,' + st * 0.2 + ')'; g.fillRect(0, 0, 256, 256); }
+    return c;
+  };
+  B.laub = [0, 1, 2, 3].map(v => [0, 1, 2].map(st => buschel(v, st)));
+  B.laubG = []; // dieselben Büschel in festen Größen, erst bei Bedarf erzeugt
+
+  // Holzfarben je Dunst-Stufe: Schattenseite, Grundton, Lichtseite. Dazu ein Rindenmuster (Furchen und helle Grate).
+  const fern = [206, 218, 214];
+  B.holz = []; B.holzHell = []; B.holzDunkel = [];
+  for (let st = 0; st < 6; st++) {
+    const t = Math.min(0.7, st * 0.13);
+    B.holz.push(mische([118, 82, 50], fern, t)); B.holzHell.push(mische([188, 146, 98], fern, t)); B.holzDunkel.push(mische([64, 42, 26], fern, t));
+  }
+  B.rinde = lw(96, 192);
+  {
+    const g = B.rinde.getContext('2d'), zf = wuerfel(5);
+    g.lineCap = 'round';
+    for (let i = 0; i < 80; i++) {
+      const x = zf() * 96, y = zf() * 192, l = 18 + zf() * 60, a = (zf() - 0.5) * 12, b = (zf() - 0.5) * 12;
+      g.strokeStyle = i % 3 ? 'rgba(28,16,8,' + (0.22 + zf() * 0.3) + ')' : 'rgba(255,226,180,' + (0.1 + zf() * 0.16) + ')';
+      g.lineWidth = 1.5 + zf() * 3.5;
+      for (const dy of [0, -192, 192]) for (const dx of [0, -96, 96]) { // an den Rändern nahtlos fortsetzen
+        g.beginPath(); g.moveTo(x + dx, y + dy); g.bezierCurveTo(x + dx + a, y + dy + l * 0.3, x + dx + b, y + dy + l * 0.7, x + dx + a * 0.4, y + dy + l); g.stroke();
+      }
+    }
+  }
+
+  // Baumschatten: ein weicher, gleichmäßiger Fleck mit wenigen großen, ganz zarten Lichtflecken; Leuchten hinter der ausgewählten Person
+  const fleck = (S, stufen) => {
+    const c = lw(S, S), g = c.getContext('2d'), v = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+    stufen.forEach(s => v.addColorStop(s[0], s[1]));
+    g.fillStyle = v; g.fillRect(0, 0, S, S);
+    return c;
+  };
+  B.schatten = fleck(256, [[0, 'rgba(24,66,26,.25)'], [0.5, 'rgba(26,70,26,.2)'], [0.8, 'rgba(28,74,26,.09)'], [1, 'rgba(30,76,26,0)']]);
+  {
+    const g = B.schatten.getContext('2d'), zf = wuerfel(31);
+    for (let i = 0; i < 40; i++) {
+      const a = zf() * 6.2832, r = Math.sqrt(zf()) * 78;
+      fleckAuf(g, 128 + r * Math.cos(a), 128 + r * Math.sin(a), 16 + zf() * 20, 'rgba(20,60,22,.045)', 'rgba(20,60,22,0)');
+    }
+  }
+  B.glut = fleck(128, [[0, 'rgba(255,224,110,.95)'], [0.45, 'rgba(255,206,80,.6)'], [1, 'rgba(255,200,70,0)']]);
+
+  // Wiese: Blumen (weiß, gelb, rosa) mit einzelnen Blütenblättern und Grasbüschel aus geschwungenen Halmen
+  B.blumen = [0, 1, 2, 3].map(art => {
+    const c = lw(64, 64), g = c.getContext('2d'), zf = wuerfel(3 + art);
+    g.lineCap = 'round';
+    if (art === 2) {
+      for (let i = 0; i < 11; i++) {
+        const x = (zf() - 0.5) * 44, hh = 22 + zf() * 34;
+        g.strokeStyle = mische([44, 112, 40], [150, 204, 96], zf()); g.lineWidth = 2 + zf() * 2.4;
+        g.beginPath(); g.moveTo(32 + x * 0.25, 63); g.quadraticCurveTo(32 + x * 0.4, 63 - hh * 0.6, 32 + x, 63 - hh); g.stroke();
+      }
+    } else {
+      g.strokeStyle = '#4c9238'; g.lineWidth = 3.4;
+      g.beginPath(); g.moveTo(30, 63); g.quadraticCurveTo(34, 44, 32, 26); g.stroke();
+      g.fillStyle = '#5aa243';
+      g.beginPath(); g.moveTo(32, 50); g.quadraticCurveTo(46, 40, 52, 46); g.quadraticCurveTo(44, 54, 32, 50); g.fill();
+      for (let i = 0; i < 7; i++) {
+        const a = i * 0.8976, x = 32 + 11 * Math.cos(a), y = 22 + 11 * Math.sin(a);
+        const v = g.createRadialGradient(32, 22, 2, x, y, 9);
+        v.addColorStop(0, ['#e8e2c8', '#f0a524', '', '#e486ae'][art]); v.addColorStop(1, ['#ffffff', '#ffe45c', '', '#fbd3e2'][art]);
+        g.fillStyle = v;
+        g.beginPath(); g.ellipse(x, y, 8, 5.4, a, 0, 6.2832); g.fill();
+      }
+      fleckAuf(g, 32, 22, 7, art === 1 ? '#b86a14' : '#f5c21c', art === 1 ? 'rgba(208,122,24,.9)' : 'rgba(236,170,20,.9)');
+    }
+    return c;
+  });
+
+  // Wolken (vier Formen): helle Kuppen, bläulich-graue Unterseite. Dazu der Sonnenschein.
+  const zf = wuerfel(4711);
+  B.wolke = [0, 1, 2, 3].map(() => {
+    const c = lw(320, 160), g = c.getContext('2d');
+    for (let k = 0; k < 24; k++) {
+      const t = zf(), r = 20 + zf() * 28;
+      fleckAuf(g, 62 + t * 196, 100 - Math.sin(t * 3.1416) * (22 + zf() * 30) + zf() * 12, r, 'rgba(255,255,255,.9)', 'rgba(255,255,255,0)');
+    }
+    g.globalCompositeOperation = 'source-atop';
+    const v = g.createLinearGradient(0, 56, 0, 128);
+    v.addColorStop(0, 'rgba(255,248,236,0)'); v.addColorStop(1, 'rgba(126,146,184,.6)');
+    g.fillStyle = v; g.fillRect(0, 0, 320, 160);
+    return c;
+  });
+  B.sonne = fleck(256, [[0, 'rgba(255,255,246,1)'], [0.07, 'rgba(255,252,228,.95)'], [0.2, 'rgba(255,244,200,.5)'], [0.5, 'rgba(255,238,190,.18)'], [1, 'rgba(255,236,190,0)']]);
+  // Wolken am Himmel: Richtung (Winkel), Höhe über dem Horizont, Größe, Form
+  B.wolken = [];
+  for (let i = 0; i < 30; i++) B.wolken.push([(i + zf() * 0.8) * 6.2832 / 30, i % 2 ? 0.22 + zf() * 0.6 : 0.05 + zf() * 0.13, (i % 2 ? 0.12 : 0.06) + zf() * 0.08, i % 4]);
+  // Die fertigen Bilder als unveränderliche Bitmaps ablegen: der Browser zeichnet sie deutlich schneller als Canvas-Flächen.
+  if (window.createImageBitmap) {
+    const tausche = (liste, i) => {
+      if (Array.isArray(liste[i])) liste[i].forEach((x, k) => tausche(liste[i], k));
+      else if (liste[i] && liste[i].getContext && i !== 'rinde') createImageBitmap(liste[i]).then(bm => { liste[i] = bm; fordere(); }, () => {});
+    };
+    Object.keys(B).forEach(k => tausche(B, k));
+  }
+  return B;
+}
+
+// Frucht in fester Größe. nr = (verstorben ? 6 : 0) + Dunst-Stufe, mal 128, plus Kantenlänge in Bildpunkten.
+function fruchtBild(nr) {
+  const B = bilder, S = nr & 127, v = nr >> 7;
+  let c = B.fruchtG[nr];
+  if (!c) {
+    c = B.fruchtG[nr] = document.createElement('canvas');
+    c.width = c.height = S;
+    c.getContext('2d').drawImage((S < 44 ? B.fruchtKlein : B.frucht)[v >= 6 ? 1 : 0][v % 6], 0, 0, S, S);
+  }
+  return c;
+}
+// Laubbüschel in fester Größe. nr = (Form * 3 + Dunst-Stufe) * 64 + Größenstufe (8 Bildpunkte mal 1,12 hoch Stufe).
+function laubBild(nr) {
+  const B = bilder, v = nr >> 6;
+  let c = B.laubG[nr];
+  if (!c) {
+    const S = Math.round(8 * Math.pow(1.12, nr & 63));
+    c = B.laubG[nr] = document.createElement('canvas');
+    c.width = c.height = S;
+    c.getContext('2d').drawImage(B.laub[v / 3 | 0][v % 3], 0, 0, S, S);
+  }
+  return c;
+}
+// Erzeugt die gängigen Größen von Früchten und Laub vorab, in kleinen Portionen zwischen den Bildern.
+// So stockt das Bild nicht, wenn nach einem Ansichtswechsel viele neue Größen auf einmal gebraucht werden.
+// In der 2D-Ansicht ruht das (und läuft beim nächsten 3D-Bild weiter).
+function waerme3d() {
+  const t0 = performance.now(), N = 12 * 58 + 12 * 25;
+  waermeAn = false;
+  if (!modus3d || !bilder) return;
+  for (; waermeNr < N && performance.now() - t0 < 5; waermeNr++) {
+    if (waermeNr < 12 * 58) fruchtBild((waermeNr / 58 | 0) * 128 + 7 + waermeNr % 58); // Kantenlängen 7 bis 64
+    else laubBild(((waermeNr - 12 * 58) / 25 | 0) * 64 + (waermeNr - 12 * 58) % 25);
+  }
+  if (waermeNr < N) { waermeAn = true; setTimeout(waerme3d, 30); }
+}
+
+// 3D-Layout als Baum. Jeder Teilbaum bekommt rund um den Stamm einen Winkelbereich, der zu seinem Platzbedarf passt,
+// damit sich Äste nicht kreuzen. Eingeheiratete stehen neben ihrem Partner. Wird nur neu gebaut, wenn sich die Daten
+// geändert haben (nicht bei bloßer Auswahl).
+function baue3d() {
+  const sig = JSON.stringify([
+    daten.personen.map(p => [p.id, p.vorname, p.zweitname, p.nachname, p.geburtsdatum, p.sterbedatum, p.sterbedatumUnbekannt]),
+    daten.ehen.map(e => [e.partner, e.kinder, e.art, e.heiratsdatum, e.endedatum])]);
+  if (sig === stand3) return;
+  stand3 = sig;
+  const ABST = 100, PAAR = 132, STUFE = 300; // Platz je Person am Ring; Abstand zwischen Partnern; kleinster Ringabstand
+  const P = daten.personen, gen = id => L.pos.get(id).g, pVon = new Map(P.map(p => [p.id, p]));
+  p3 = new Map(); leute = []; aeste = []; baender = []; baeume = []; fams3 = []; treffer = []; schweb = null; rollenAlt = true;
+  let saat = 7; // fester Startwert: derselbe Baum sieht immer gleich aus
+  const zufall = () => (saat = saat * 16807 % 2147483647) / 2147483647;
+  const famVon = new Map(P.map(p => [p.id, []])), hatEltern = new Set();
+  for (const f of L.F) { f.pa.forEach(id => famVon.get(id).push(f)); f.ki.forEach(id => hatEltern.add(id)); }
+  // Nachkommen zählen (zyklensicher)
+  const nach = new Map();
+  const zaehle = (id, pfad) => {
+    if (nach.has(id)) return nach.get(id);
+    if (pfad.has(id)) return 0;
+    pfad.add(id);
+    let n = 0;
+    for (const f of famVon.get(id)) for (const k of f.ki) n += 1 + zaehle(k, pfad);
+    pfad.delete(id);
+    nach.set(id, n);
+    return n;
+  };
+  P.forEach(p => zaehle(p.id, new Set()));
+
+  // Knoten = Person mit ihren (noch nicht gesetzten) Partnern; Kinder = Knoten der Kinder.
+  const belegt = new Set();
+  const knoten = (id, eltern) => {
+    const frei = [];
+    for (const f of famVon.get(id)) for (const q of f.pa) if (q !== id && !belegt.has(q) && frei.indexOf(q) < 0) frei.push(q);
+    const kn = { g: gen(id), haupt: id, eltern: eltern, ids: frei.length > 1 ? [frei[0], id].concat(frei.slice(1)) : [id].concat(frei), kinder: [], rec: [], auf: 0, a: 0, baum: null };
+    kn.ids.forEach(x => belegt.add(x));
+    const kids = [];
+    for (const x of kn.ids) for (const f of famVon.get(x)) for (const k of f.ki) if (!belegt.has(k) && kids.indexOf(k) < 0) kids.push(k);
+    kids.sort((a, b) => L.pos.get(a).x - L.pos.get(b).x);
+    for (const k of kids) if (!belegt.has(k)) kn.kinder.push(knoten(k, kn));
+    return kn;
+  };
+  // Platzbedarf als Winkel (bezogen auf Ringabstand 1): eigener Bedarf oder Summe der Kinder.
+  const bedarf = (kn, g0) => {
+    kn.d = Math.max(1, kn.g - g0);
+    let s = 0;
+    kn.kinder.forEach(c => { s += bedarf(c, g0); });
+    // Blattknoten (ohne Kinder) kommen mit etwas weniger Breite aus: Nachbarn sitzen abwechselnd weiter innen und tiefer
+    // bzw. weiter außen und höher. Enger geht es nicht, sonst verdecken sich die Früchte aus manchen Blickrichtungen.
+    kn.need = Math.max(((kn.ids.length - 1) * PAAR + ABST) * (kn.kinder.length ? 1 : kn.ids.length > 1 ? 0.9 : 0.78) / kn.d, s);
+    return kn.need;
+  };
+  const alle = []; // jeder Baum zuerst für sich, um seine eigene Mitte
+  const setzeBaum = wurzelId => {
+    const wk = knoten(wurzelId, null), g0 = wk.g, orte = [];
+    let summe = 0, tiefe = 0;
+    wk.kinder.forEach(c => { summe += bedarf(c, g0); });
+    const U = Math.max(STUFE, summe / (2 * Math.PI)); // Ringabstand: so groß, dass alles auf den Vollkreis passt
+    const lege = (kn, a0, a1, auf) => {
+      const wurzel = kn === wk, n = kn.ids.length;
+      let sk2 = 0;
+      kn.kinder.forEach(c => { sk2 += c.need; });
+      const f = wurzel ? 2 * Math.PI / (sk2 || 1) : 1 / U; // Wurzel: Kinder füllen den Vollkreis
+      let a = (a0 + a1) / 2, c0 = wurzel ? a0 : a - sk2 * f / 2;
+      if (wurzel && kn.kinder.length) {
+        // Das Wurzel-Paar steht quer zur Richtung seines größten Astes: von dort gesehen stehen alle Paare nebeneinander.
+        let w0 = a0, gross = null;
+        kn.kinder.forEach(c => { if (!gross || c.need > gross.need) { gross = c; a = w0 + c.need * f / 2; } w0 += c.need * f; });
+      }
+      // Geschwister sitzen abwechselnd etwas höher und weiter außen bzw. tiefer und weiter innen:
+      // das wirkt natürlicher und schafft Platz für die Namensschilder.
+      const r = wurzel ? 0 : kn.d * U + auf * 42;
+      kn.a = a; kn.auf = auf;
+      tiefe = Math.max(tiefe, r);
+      kn.ids.forEach((id, i) => {
+        const ab = (i - (n - 1) / 2) * PAAR;
+        orte.push({ id: id, kn: kn, i: i, X: r * Math.sin(a) + ab * Math.cos(a), Z: -r * Math.cos(a) + ab * Math.sin(a) });
+      });
+      const nk = kn.kinder.length;
+      kn.kinder.forEach((c, k) => { lege(c, c0, c0 + c.need * f, nk > 1 ? (k % 2 ? 1 : -1) : 0); c0 += c.need * f; });
+    };
+    lege(wk, 0, 2 * Math.PI, 0);
+    alle.push({ wk: wk, U: U, orte: orte, R: tiefe + ABST * 1.7, X: 0, Z: 0, wink: 0, br: 0, stamm2: 0, kd: grenze(Math.pow(U / STUFE, 0.6), 1, 2.4) });
+  };
+  // Hauptstamm = Wurzel mit den meisten Nachkommen; danach alle übrigen Wurzeln, zuletzt Reste (z. B. Zyklen).
+  const nachGroesse = (a, b) => nach.get(b.id) - nach.get(a.id);
+  P.filter(p => !hatEltern.has(p.id)).sort(nachGroesse).forEach(p => { if (!belegt.has(p.id)) setzeBaum(p.id); });
+  P.slice().sort(nachGroesse).forEach(p => { if (!belegt.has(p.id)) setzeBaum(p.id); });
+
+  const haupt = alle[0];
+  const VH = haupt ? grenze(haupt.U * 1.05, 250, 4000) : 250; // Höhe einer Ebene wächst mit, damit die Krone nicht flach wird
+  const STAMM = VH * 0.85;                                     // Höhe der untersten Generation über der Wiese
+  // Die Äste steigen am Stamm steil an und laufen nach außen flacher aus (Schirmkrone statt Trichter).
+  const hoch = g => STAMM + VH * 4 * (1 - Math.exp(-g / 2.4));
+  // Weitere Bäume stehen auf Ringen um den Hauptbaum, möglichst in Richtung einer verwandten Person.
+  // Je Ring einmal sortieren und der Reihe nach setzen: der Aufwand wächst nicht quadratisch mit der Zahl der Bäume.
+  if (alle.length > 1) {
+    const ortVon = new Map(haupt.orte.map(o => [o.id, o])), rest = alle.slice(1);
+    rest.forEach((b, nr) => {
+      b.wink = nr * 2.4;
+      suche: for (const o of b.orte) for (const f of famVon.get(o.id)) for (const x of f.pa.concat(f.ki)) {
+        const v = ortVon.get(x);
+        if (v && (v.X || v.Z)) { b.wink = Math.atan2(v.X, -v.Z); break suche; }
+      }
+      b.wink -= 2 * Math.PI * Math.floor(b.wink / (2 * Math.PI));
+    });
+    rest.sort((a, b) => b.R - a.R);
+    let innen = haupt.R, i = 0;
+    while (i < rest.length) {
+      const gr = rest[i].R, D = innen + gr, ring = [];
+      let voll = 0;
+      while (i < rest.length) {
+        const br = 2 * Math.asin(Math.min(1, rest[i].R / D));
+        if (ring.length && voll + br > 2 * Math.PI) break;
+        rest[i].br = br; voll += br; ring.push(rest[i++]);
+      }
+      ring.sort((a, b) => a.wink - b.wink);
+      // Wunschrichtung einhalten, soweit die Nachbarn Platz lassen; reicht der Ring dafür nicht, gleichmäßig verteilen.
+      let ende = -Infinity;
+      ring.forEach(b => { b.wink = Math.max(b.wink, ende + b.br / 2); ende = b.wink + b.br / 2; });
+      if (ende - (ring[0].wink - ring[0].br / 2) > 2 * Math.PI) {
+        const luft = (2 * Math.PI - voll) / ring.length;
+        let w0 = ring[0].wink - ring[0].br / 2;
+        ring.forEach(b => { b.wink = w0 + b.br / 2; w0 += b.br + luft; });
+      }
+      ring.forEach(b => { b.X = D * Math.sin(b.wink); b.Z = -D * Math.cos(b.wink); });
+      innen = D + gr;
+    }
+  }
+
+  // Personen: Ort, Texte und Textbreiten
+  const erst = s => { const t = (s || '').trim(); return t ? Array.from(t)[0].toUpperCase() : ''; };
+  const kuerze = (t, max) => {
+    if (ctx.measureText(t).width <= max) return t;
+    while (t.length > 1 && ctx.measureText(t + '…').width > max) t = t.slice(0, -1);
+    return t + '…';
+  };
+  const knListe = [];
+  let maxY = STAMM;
+  ctx.font = S_NAME;
+  for (const b of alle) for (const o of b.orte) {
+    const kn = o.kn, p = pVon.get(o.id), k = kartenText(p);
+    if (!kn.baum) { kn.baum = b; kn.dy = kn.auf * 42 + (zufall() - 0.5) * 30; knListe.push(kn); }
+    const name = kuerze([k.vn, k.nn].filter(Boolean).join(' '), 210), lang = kuerze([k.vn, k.zn, k.nn].filter(Boolean).join(' '), 230);
+    const rec = {
+      typ: 0, id: o.id, kn: kn, i: o.i, baum: b, X: b.X + o.X, Y: hoch(gen(o.id)) + kn.dy, Z: b.Z + o.Z,
+      tot: istTot(p), ini: (erst(k.vn) + erst(k.nn)) || '?', name: name, lang: lang, dat: k.dat.join('   '),
+      nb: ctx.measureText(name).width, lb: ctx.measureText(lang).width, db: 0,
+      wurzel: kn === b.wk && b.orte.length > 2, rolle: 0, g: gen(o.id), kopf: kn.kinder.length > 0,
+      x: 0, y: 0, s: 0, d: 0, r: 0, sicht: false,                               // Lage im aktuellen Bild
+      nahe: 1, sa: 0, zs: 0, st: 1, ok: false, pri: 0, sx0: 0, sy0: 0, sb: 0, sh: 0, sdx: 0, sdy: 0 // Namensschild: Deckkraft, Stufe, Rechteck
+    };
+    kn.rec.push(rec); leute.push(rec); p3.set(o.id, rec);
+    maxY = Math.max(maxY, rec.Y);
+  }
+  ctx.font = S_DATUM;
+  leute.forEach(o => { o.db = o.dat ? ctx.measureText(o.dat).width : 0; });
+
+  // Kurven (Äste, Stämme, Sitzzweige, Ranken) als Punktfolgen mit Dicke
+  const kurve = (art, A, C, B, r0, r1, n) => {
+    const pts = new Float32Array(n * 3), rad = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1), u = 1 - t;
+      pts[i * 3] = u * u * A.X + 2 * u * t * C.X + t * t * B.X;
+      pts[i * 3 + 1] = u * u * A.Y + 2 * u * t * C.Y + t * t * B.Y;
+      pts[i * 3 + 2] = u * u * A.Z + 2 * u * t * C.Z + t * t * B.Z;
+      rad[i] = r0 + (r1 - r0) * t;
+    }
+    // art: 0 Ast, 1 Stamm, 2 Sitzzweig eines Paares, 3 Ranke (Kind steht in einem anderen Baum)
+    const a = { typ: 1, art: art, pts: pts, rad: rad, n: n, o: 0, fam: null, kind: null, kis: null, an: null, hv: false, d: 0, st: 0, sicht: false };
+    aeste.push(a);
+    return a;
+  };
+  // Sitzzweig: leicht durchhängender Zweig unter allen Personen eines Knotens. sitz(kn, t) = Punkt darauf.
+  const sitzC = kn => {
+    const A = kn.rec[0], B = kn.rec[kn.rec.length - 1];
+    return { X: (A.X + B.X) / 2, Y: (A.Y + B.Y) / 2 - 2 * (26 + 7 * (kn.rec.length - 2)), Z: (A.Z + B.Z) / 2 };
+  };
+  const sitz = (kn, t) => {
+    const A = kn.rec[0], B = kn.rec[kn.rec.length - 1];
+    if (A === B) return { X: A.X, Y: A.Y, Z: A.Z };
+    const C = sitzC(kn), u = 1 - t;
+    return { X: u * u * A.X + 2 * u * t * C.X + t * t * B.X, Y: u * u * A.Y + 2 * u * t * C.Y + t * t * B.Y, Z: u * u * A.Z + 2 * u * t * C.Z + t * t * B.Z };
+  };
+  // Astdicke (Radius) am Kind: wächst mit der Zahl seiner Nachkommen
+  const dick = o => Math.min(30, o.baum.kd * (5 + 2.2 * Math.sqrt(nach.get(o.id) || 0)));
+  for (const kn of knListe) {
+    if (kn.rec.length < 2) continue;
+    const rs = grenze(dick(p3.get(kn.haupt)) * 0.8, 3.2, 14);
+    kurve(2, kn.rec[0], sitzC(kn), kn.rec[kn.rec.length - 1], rs, rs, 7).an = kn.rec;
+  }
+  const mitte = (A, B, t) => ({ X: A.X + (B.X - A.X) * t, Y: A.Y + (B.Y - A.Y) * t, Z: A.Z + (B.Z - A.Z) * t });
+  ctx.font = S_DATUM;
+  for (const f of L.F) {
+    const pa = f.pa.map(id => p3.get(id)).filter(Boolean), ki = f.ki.map(id => p3.get(id)).filter(Boolean);
+    if (!pa.length) continue;
+    const fam = { pa: pa, ki: ki };
+    fams3.push(fam);
+    // Band zwischen den Partnern: gerade bei Nachbarn, sonst als Bogen über die Personen dazwischen
+    if (pa.length === 2) {
+      const A = pa[0], B = pa[1], n = A.kn === B.kn && Math.abs(A.i - B.i) === 1 ? 2 : 9, pts = new Float32Array(n * 3);
+      const C = mitte(A, B, 0.5);
+      if (n > 2) C.Y = Math.max(A.Y, B.Y) + Math.min(VH * 0.7, 80 + Math.hypot(A.X - B.X, A.Z - B.Z) * 0.3);
+      for (let i = 0; i < n; i++) {
+        const t = i / (n - 1), u = 1 - t;
+        pts[i * 3] = u * u * A.X + 2 * u * t * C.X + t * t * B.X;
+        pts[i * 3 + 1] = u * u * A.Y + 2 * u * t * C.Y + t * t * B.Y;
+        pts[i * 3 + 2] = u * u * A.Z + 2 * u * t * C.Z + t * t * B.Z;
+      }
+      const text = eheText(f.e);
+      baender.push({ typ: 2, A: A, B: B, pts: pts, n: n, o: 0, part: f.e.art === 'partnerschaft', aus: !!f.e.endedatum, text: text, tb: text ? ctx.measureText(text).width : 0, hv: false, d: 0, sicht: false, sx: 0, sy: 0, ss: 0 });
+    }
+    // Kinder: eigene Äste, wenn das Kind im Baum unter diesem Paar hängt; sonst eine Ranke hinüber
+    const gruppen = new Map();
+    for (const k of ki) {
+      const pn = k.kn.haupt === k.id ? k.kn.eltern : null;
+      if (pn && pa.some(q => q.kn === pn)) { if (!gruppen.has(pn)) gruppen.set(pn, []); gruppen.get(pn).push(k); }
+      else {
+        const O = pa.length === 2 ? mitte(pa[0], pa[1], 0.5) : pa[0], C = mitte(O, k, 0.5);
+        C.Y = Math.max(O.Y, k.Y) + VH * 0.45;
+        const a = kurve(3, O, C, k, 0, 0, 12);
+        a.fam = fam; a.kind = k;
+      }
+    }
+    gruppen.forEach((kids, pn) => {
+      const drin = pa.filter(q => q.kn === pn), b = pn.baum;
+      // Ansatz: zwischen benachbarten Partnern in der Mitte ihres Sitzzweigs, sonst an der Person selbst
+      let O;
+      if (drin.length === 2 && Math.abs(drin[0].i - drin[1].i) === 1) O = sitz(pn, (Math.min(drin[0].i, drin[1].i) + 0.5) / (pn.rec.length - 1));
+      else O = drin.length === 2 && drin[0].id === pn.haupt ? drin[1] : drin[0];
+      let mX = 0, mZ = 0, minY = Infinity, streu = 0, q2 = 0;
+      kids.forEach(k => { mX += k.X; mZ += k.Z; minY = Math.min(minY, k.Y); const r = dick(k); q2 += r * r; });
+      mX /= kids.length; mZ /= kids.length;
+      kids.forEach(k => { streu = Math.max(streu, Math.hypot(k.X - mX, k.Z - mZ)); });
+      const weit = Math.hypot(mX - O.X, mZ - O.Z);
+      const zweig = (S, k, r0) => {
+        // erst nach außen, dann von unten in die Frucht
+        const C = { X: S.X + (k.X - S.X) * 0.84, Y: S.Y + (k.Y - S.Y) * 0.16, Z: S.Z + (k.Z - S.Z) * 0.84 };
+        const a = kurve(0, S, C, k, r0, dick(k), 13);
+        a.fam = fam; a.kind = k;
+      };
+      if (kids.length > 1 && pn.eltern && weit > 80) {
+        // Gemeinsamer Ast bis zur Gabel, von dort ein Zweig je Kind
+        const teil = grenze(0.56 - 0.26 * streu / weit, 0.2, 0.56);
+        const G = { X: O.X + (mX - O.X) * teil, Y: O.Y + (minY - O.Y) * teil * 0.7, Z: O.Z + (mZ - O.Z) * teil };
+        const rG = Math.min(36, Math.sqrt(q2) * 0.85 + 1.5), C = { X: O.X + (G.X - O.X) * 0.6, Y: O.Y + (G.Y - O.Y) * 0.1, Z: O.Z + (G.Z - O.Z) * 0.6 };
+        const a = kurve(0, O, C, G, rG * 1.2, rG, 9);
+        a.fam = fam; a.kis = kids;
+        kids.forEach(k => zweig(G, k, Math.min(rG, dick(k) * 1.35 + 1.5)));
+      } else kids.forEach(k => {
+        const r0 = dick(k) * 1.3 + 2;
+        if (pn === b.wk) b.stamm2 += r0 * r0;
+        zweig(O, k, r0);
+      });
+    });
+  }
+  // Stämme: von der Wiese bis zur Wurzel jedes Baums, unten breiter, leicht geschwungen. Am Fuß laufen einige
+  // kurze Wurzeln dicht am Boden in die Wiese (Wurzelanlauf).
+  for (const b of alle) {
+    const T = sitz(b.wk, 0.5), rt = b.orte.length > 1 ? grenze(Math.sqrt(b.stamm2) * 0.8, 18 * b.kd, 75) : 7, n = 14;
+    const a = kurve(1, { X: b.X, Y: 0, Z: b.Z }, { X: b.X + (zufall() - 0.5) * T.Y * 0.14, Y: T.Y * 0.5, Z: b.Z + (zufall() - 0.5) * T.Y * 0.14 }, T, rt, rt, n);
+    for (let i = 0; i < n; i++) { const t = i / (n - 1); a.rad[i] = rt * (1.45 - 0.45 * t + 0.9 * Math.exp(-t * 8)); }
+    if (b.orte.length > 1) for (let i = 0; i < 6; i++) {
+      const w0 = i * 1.047 + zufall() * 0.7, l = rt * (2.5 + zufall() * 1.3), c0 = Math.cos(w0), s0 = Math.sin(w0);
+      kurve(4, { X: b.X + c0 * rt * 0.4, Y: rt * 1.1, Z: b.Z + s0 * rt * 0.4 }, { X: b.X + c0 * l * 0.5, Y: rt * 0.22, Z: b.Z + s0 * l * 0.5 }, { X: b.X + c0 * l, Y: 0, Z: b.Z + s0 * l }, rt * 0.6, rt * 0.1, 7);
+    }
+    baeume.push({ X: b.X, Z: b.Z, R: b.R });
+  }
+
+  // Laub in zwei Schichten. Hinten (laub): Büschel um jede Person und entlang der Zweige, als dichte Krone hinter
+  // den Ästen. Vorn (laubV): kleinere Büschel über den äußeren Zweigen – sie liegen über dem Holz, aber immer unter
+  // Früchten, Bändern und Schildern.
+  const lb = [], lv = [], dicht = P.length > 1500 ? 0.4 : 1, form = () => Math.floor(zufall() * 4);
+  for (const o of leute) {
+    const blatt = !o.kn.kinder.length, n = 1 + (P.length < 60 ? 2 : 0) + (blatt && zufall() < 0.3 ? 1 : 0); // kleine Bäume bekommen mehr Laub je Person
+    for (let i = 0; i < n; i++) if (zufall() < dicht) lb.push(o.X + (zufall() - 0.5) * 200, o.Y + 20 + zufall() * 120, o.Z + (zufall() - 0.5) * 200, 140 + zufall() * 85, form());
+    if (blatt && zufall() < 0.5 * dicht) lv.push(o.X + (zufall() - 0.5) * 130, o.Y + 55 + zufall() * 70, o.Z + (zufall() - 0.5) * 130, 80 + zufall() * 55, form());
+  }
+  for (const a of aeste) if (a.art === 0 && zufall() < dicht * 0.65) {
+    const j = a.kind ? 21 : 12;
+    lb.push(a.pts[j] + (zufall() - 0.5) * 70, a.pts[j + 1] + 30 + zufall() * 60, a.pts[j + 2] + (zufall() - 0.5) * 70, 125 + zufall() * 80, form());
+    if (a.kind && zufall() < 0.25) lv.push(a.pts[27] + (zufall() - 0.5) * 60, a.pts[28] + 20 + zufall() * 40, a.pts[29] + (zufall() - 0.5) * 60, 70 + zufall() * 45, form());
+  }
+  // Kleine Familien: Die wenigen Personen stehen fast übereinander, ihr Laub ergäbe eine kantige Säule. Zusätzliche
+  // Büschel in Eiform um den ganzen Baum runden die Krone ab (hinter Ästen und Früchten, das Layout bleibt unberührt).
+  if (P.length < 60) for (const b of alle) {
+    const ps = leute.filter(o => o.baum === b);
+    if (ps.length < 3) continue;
+    let y0 = Infinity, y1 = -Infinity, rr = 0;
+    ps.forEach(o => { y0 = Math.min(y0, o.Y); y1 = Math.max(y1, o.Y); rr = Math.max(rr, Math.hypot(o.X - b.X, o.Z - b.Z)); });
+    const ry = (y1 - y0) / 2 + 150, rx = Math.max(rr * 0.8 + 100, ry * 0.5), my = (y0 + y1) / 2 + 70;
+    for (let i = ps.length * 4 + 16; i > 0; i--) {
+      const a = zufall() * 6.2832, u = zufall() * 1.8 - 0.8, k = Math.sqrt(1 - Math.min(1, u * u)) * Math.sqrt(zufall());
+      lb.push(b.X + Math.cos(a) * k * rx, Math.max(my + u * ry * (0.7 + 0.3 * zufall()), y0 - 30), b.Z + Math.sin(a) * k * rx, 150 + zufall() * 80, form());
+    }
+  }
+  laub = new Float32Array(lb); laubV = new Float32Array(lv);
+
+  let R = 0;
+  alle.forEach(b => { R = Math.max(R, Math.hypot(b.X, b.Z) + b.R); });
+  szene = { R: R || 600, H: maxY + PR * 2, yaw: haupt ? haupt.wk.a + 0.12 : 0.5 };
+  // Wiese: Blumen und Grasbüschel rund um die Bäume
+  const ws = [];
+  for (let i = 0; i < 200; i++) {
+    const a = zufall() * 6.2832, r = Math.sqrt(zufall()) * (szene.R * 1.5 + 600);
+    ws.push(r * Math.sin(a), r * Math.cos(a), (26 + zufall() * 26) * grenze(szene.R / 1500, 1, 3), Math.floor(zufall() * 4));
+  }
+  wiese = new Float32Array(ws);
+
+  let np = 0;
+  aeste.forEach(a => { a.o = np; np += a.n; });
+  baender.forEach(b => { b.o = np; np += b.n; });
+  pkx = new Float32Array(np); pky = new Float32Array(np); pks = new Float32Array(np);
+  reihen = [].concat(baender, leute);
+  const lr = $('#legRanke');
+  if (lr) lr.hidden = !aeste.some(a => a.art === 3);
+}
+
+// Wer wird hervorgehoben? Die ausgewählte Person (2), ihre Eltern, Partner und Kinder (1) und die Äste dazwischen.
+function rollen() {
+  rollenAlt = false; rollenId = auswahl;
+  const ich = p3.get(auswahl);
+  hatAuswahl = !!ich;
+  leute.forEach(o => { o.rolle = 0; });
+  if (ich) {
+    for (const f of fams3) {
+      if (f.pa.indexOf(ich) >= 0) { f.pa.forEach(o => { o.rolle = 1; }); f.ki.forEach(o => { o.rolle = 1; }); }
+      else if (f.ki.indexOf(ich) >= 0) f.pa.forEach(o => { o.rolle = 1; });
+    }
+    ich.rolle = 2;
+  }
+  aeste.forEach(a => {
+    a.hv = !!ich && (a.fam ? a.fam.pa.indexOf(ich) >= 0 || (a.kind ? a.kind === ich : a.kis.indexOf(ich) >= 0) : !!a.an && a.an.indexOf(ich) >= 0);
+  });
+  baender.forEach(b => { b.hv = !!ich && (b.A === ich || b.B === ich); });
+}
+
+/* ----- Kamera: kreist um einen Zielpunkt (cam.X, cam.Y, cam.Z); yaw = Drehung, pitch = Höhe des Blicks, dist = Abstand ----- */
+let bild3 = 0, zeit3 = 0;                      // angefordertes Bild; Zeit des letzten Bildes
+let fahrt = null, schwung = null;              // laufende Kamerafahrt; Nachdrehen nach dem Loslassen
+let zoomZiel = 0, zoomX = 0, zoomY = 0;        // weicher Zoom: Ziel-Abstand und Ankerpunkt (relativ zur Bildmitte)
+let schub3 = false, drehZeit = 0, drehVY = 0, drehVP = 0, kamNeu = true;
+let klickId = null, klickZeit = 0, klickX = 0, klickY = 0, klickBild = []; // letzter Klick und die Früchte, die dabei in seiner Nähe lagen
+let sicht3 = null;                             // zuletzt angefahrene Ansicht ({ id, nah } oder { id: null } = ganzer Baum), bis der Nutzer selbst die Kamera bewegt
+let sperr3 = [];                               // Flächen von Legende, Hinweis und Knöpfen: dort stehen keine Namensschilder
+let legU = 0, legR = 0, legBlass = false;      // Unter- und rechte Kante der Legende; sie wird blass, solange Früchte darunter liegen
+let hinweisUhr = 0;                            // blendet den Bedienhinweis nach einigen Sekunden aus
+const distMin = fok => fok * 0.3, distMax = () => (szene.R + szene.H) * 7 + 3000;
+
+// Ein einziger Zeichen-Takt: Bilder entstehen nur, wenn sich etwas bewegt oder geändert hat.
+function fordere() { if (!bild3 && modus3d) bild3 = requestAnimationFrame(schleife); }
+function schleife(t) {
+  bild3 = 0;
+  if (!modus3d) { zeit3 = 0; return; }
+  const dt = zeit3 ? grenze(t - zeit3, 1, 60) : 16;
+  zeit3 = t;
+  let weiter = bewege(dt, t);
+  if (zeichne3d(dt)) weiter = true;
+  if (weiter) fordere(); else zeit3 = 0;
+}
+// Verschiebt den Zielpunkt in der Bildebene: a nach rechts, b nach oben (Welt-Einheiten).
+function rueck(K, a, b) {
+  const cy = Math.cos(K.yaw), sy = Math.sin(K.yaw), cp = Math.cos(K.pitch), sp = Math.sin(K.pitch);
+  K.X += a * cy - b * sy * sp; K.Y += b * cp; K.Z += a * sy + b * cy * sp;
+}
+// Hält die Kamera in sinnvollen Grenzen: nie unter die Wiese, nie endlos weit weg vom Baum.
+function begrenze() {
+  const fok = brennweite(cv.clientWidth || 800, cv.clientHeight || 600);
+  cam.pitch = grenze(cam.pitch, 0.04, 1.45);
+  cam.dist = grenze(cam.dist, distMin(fok), distMax());
+  cam.Y = grenze(cam.Y, 0, szene.H * 1.15);
+  const r = Math.hypot(cam.X, cam.Z), max = szene.R * 1.15 + 300;
+  if (r > max) { cam.X *= max / r; cam.Z *= max / r; }
+}
+function zoomAuf(dist) { // Abstand ändern; der Punkt unter dem Anker (Maus, Finger) bleibt an seiner Stelle
+  const fok = brennweite(cv.clientWidth, cv.clientHeight), k = (cam.dist - dist) / fok;
+  rueck(cam, zoomX * k, -zoomY * k);
+  cam.dist = dist;
+}
+function bewege(dt, t) {
+  let weiter = false;
+  if (fahrt) {
+    if (!fahrt.t0) fahrt.t0 = t;
+    const u = fahrt.dauer ? Math.min(1, (t - fahrt.t0) / fahrt.dauer) : 1, e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(2 - 2 * u, 3) / 2;
+    const a = fahrt.von, b = fahrt.nach;
+    cam.X = a.X + (b.X - a.X) * e; cam.Y = a.Y + (b.Y - a.Y) * e; cam.Z = a.Z + (b.Z - a.Z) * e;
+    cam.yaw = a.yaw + (b.yaw - a.yaw) * e; cam.pitch = a.pitch + (b.pitch - a.pitch) * e;
+    cam.dist = a.dist * Math.pow(b.dist / a.dist, e);
+    if (u >= 1) fahrt = null; else weiter = true;
+  }
+  if (zoomZiel) {
+    let d = cam.dist * Math.pow(zoomZiel / cam.dist, 1 - Math.exp(-dt / 70));
+    if (Math.abs(Math.log(zoomZiel / d)) < 0.003) { d = zoomZiel; zoomZiel = 0; } else weiter = true;
+    zoomAuf(d);
+  }
+  if (schwung) {
+    cam.yaw += schwung.yaw * dt; cam.pitch += schwung.pitch * dt;
+    const f = Math.exp(-dt / 260);
+    schwung.yaw *= f; schwung.pitch *= f;
+    if (Math.abs(schwung.yaw) + Math.abs(schwung.pitch) < 0.00003) schwung = null; else weiter = true;
+  }
+  begrenze();
+  return weiter;
+}
+// Weiche Kamerafahrt zu einer neuen Stellung (auf dem kürzeren Drehweg).
+function fahre(nach, dauer) {
+  schwung = null; zoomZiel = 0;
+  nach.yaw = cam.yaw + wickel(nach.yaw - cam.yaw);
+  fahrt = { von: Object.assign({}, cam), nach: nach, dauer: ruhig ? 0 : dauer, t0: 0 };
+  fordere();
+}
+// Feste Gesamtansicht: von der Seite, etwas von oben – so wirkt es wie ein Baum. Im Hochformat (Handy) nutzt eine breite
+// Krone so die Höhe nicht: dort wird der Blick schrittweise steiler, bis der Baum die freie Höhe füllt (höchstens bis
+// PMAX, damit er als Baum erkennbar bleibt). Immer passen alle Personen und Stammfüße ins Bild.
+function ueberblick(w, h) {
+  const hoch = h > w * 1.2, blaetter = leute.length < 60 ? laub : null, PMAX = 0.8125;
+  const neu = p => ({ X: 0, Y: szene.H * 0.5, Z: 0, yaw: szene.yaw, pitch: p, dist: (szene.R + szene.H) * 2 });
+  let K = neu(hoch ? 0.42 : grenze(-0.1 + 0.62 * h / w, 0.3, 0.6));
+  if (!leute.length) { K.dist = brennweite(w, h) * 2; return K; }
+  K = rahme(K, leute, baeume, w, h, PR * 3.5, 0, null);
+  for (let p = 0.5; hoch && fuell3 < 0.94 && p < PMAX + 0.01; p += 0.0625) K = rahme(neu(p), leute, baeume, w, h, PR * 3.5, 0, null);
+  return blaetter ? rahme(K, leute, baeume, w, h, PR * 3.5, 0, blaetter) : K;
+}
+// Rückt und zoomt die Kamerastellung K so, dass die genannten Personen (und Stammfüße) ins Bild passen.
+// Drehung und Blickhöhe bleiben. rand = Luft um jede Person (Welt-Einheiten), unten = Platz für Namensschilder (px),
+// blaetter = Laubbüschel, die ebenfalls ins Bild sollen (kleine Bäume: Luft über der Krone).
+function rahme(K, personen, fuesse, w, h, rand, unten, blaetter) {
+  const fok = brennweite(w, h);
+  const ux0 = 18, ux1 = Math.max(w - 18, 60), uy0 = Math.min(16 + $('#legende').offsetHeight, h / 3), uy1 = Math.max(h - 64 - unten, uy0 + 60);
+  for (let r = 0; r < 30; r++) {
+    const cy = Math.cos(K.yaw), sy = Math.sin(K.yaw), cp = Math.cos(K.pitch), sp = Math.sin(K.pitch);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    const nimm = (X, Y, Z, R) => {
+      X -= K.X; Y -= K.Y; Z -= K.Z;
+      const xa = X * cy + Z * sy, za = Z * cy - X * sy, s = fok / Math.max(za * cp - Y * sp + K.dist, 1);
+      const x = w / 2 + xa * s, y = blickY(h) - (Y * cp + za * sp) * s, rr = R * s;
+      x0 = Math.min(x0, x - rr); x1 = Math.max(x1, x + rr); y0 = Math.min(y0, y - rr * 1.4); y1 = Math.max(y1, y + rr);
+    };
+    personen.forEach(o => nimm(o.X, o.Y, o.Z, rand));
+    if (blaetter) for (let i = 0; i < blaetter.length; i += 5) nimm(blaetter[i], blaetter[i + 1], blaetter[i + 2], blaetter[i + 3] * 0.7);
+    fuesse.forEach(b => nimm(b.X, 0, b.Z, PR * 2));
+    const s = fok / K.dist;
+    // gedämpfte Schritte: was nahe an der Kamera liegt, wächst und wandert sprunghaft – sonst schaukelt sich die Suche auf
+    rueck(K, -0.6 * ((ux0 + ux1) / 2 - (x0 + x1) / 2) / s, 0.6 * ((uy0 + uy1) / 2 - (y0 + y1) / 2) / s);
+    fuell3 = (y1 - y0) / (uy1 - uy0);
+    K.dist = grenze(K.dist * grenze(Math.sqrt(Math.max((x1 - x0) / (ux1 - ux0), fuell3)), 0.55, 1.8), distMin(fok), distMax());
+  }
+  return K;
+}
+// Fährt zu einer Person. Die Kamera schaut dabei von außen und schräg von oben auf ihren Platz im Baum: so stehen die
+// Eltern (innen, tiefer) im Bild über ihr und die Kinder (außen) unter ihr, und nichts steht davor.
+// nah = false: so weit weg, dass Eltern, Partner und Kinder mit im Bild sind. nah = true: dicht an die Person.
+function fahreZuPerson(id, nah) {
+  const von = fahrt ? fahrt.nach : cam, K = sichtAuf(id, nah, von.yaw);
+  if (!K) return;
+  sicht3 = { id: id, nah: nah };
+  fahre(K, 650 + 350 * Math.abs(wickel(K.yaw - von.yaw)) / Math.PI);
+}
+// Kamerastellung für den Blick auf eine Person (yaw = bisherige Drehung; sie bleibt, wenn die Person in der Baummitte steht).
+function sichtAuf(id, nah, yaw) {
+  const o = p3.get(id), w = cv.clientWidth, h = cv.clientHeight;
+  if (!o || !w || !h) return null;
+  const fok = brennweite(w, h), rx = o.X - o.baum.X, rz = o.Z - o.baum.Z;
+  const K = { X: o.X, Y: o.Y, Z: o.Z, yaw: Math.hypot(rx, rz) > 100 ? Math.atan2(rx, -rz) : yaw, pitch: 1.1, dist: fok * PR / 42 };
+  if (!nah) {
+    if (rollenAlt || rollenId !== auswahl) rollen();
+    const kreis = id === auswahl ? leute.filter(q => q.rolle) : [o];
+    K.dist = fok * 12;
+    rahme(K, kreis, [], w, h, PR * 2.5, 40);
+    K.dist = Math.max(K.dist, fok * PR / 27);
+    if (K.dist > fok * PR / 11) { K.dist = fok * PR / 11; K.X = o.X; K.Y = o.Y; K.Z = o.Z; } // sehr weit verstreute Familie: Person in die Mitte
+  }
+  return K;
+}
+// Die Bildfläche hat eine neue Größe (Fenster, Panel auf/zu, Handy gedreht): Solange der Nutzer die Kamera seit der
+// letzten Fahrt nicht selbst bewegt hat, wird dieselbe Ansicht für die neue Größe neu berechnet.
+function passeAn3d() {
+  const r = fl.getBoundingClientRect();
+  sperr3 = []; legU = legR = 0;
+  for (const el of [$('#legende'), $('#hinweis3d'), $('.zoom')]) {
+    const q = el && el.style.opacity !== '0' ? el.getBoundingClientRect() : null;
+    if (!q || !q.width) continue;
+    let x1 = q.right;
+    if (el.id === 'legende') { // die Legende belegt nur, was ihre Einträge wirklich füllen
+      x1 = q.left;
+      for (const s of el.children) x1 = Math.max(x1, s.getBoundingClientRect().right);
+      legU = q.bottom - r.top; legR = x1 - r.left;
+    }
+    sperr3.push(q.left - r.left, q.top - r.top, x1 - r.left, q.bottom - r.top);
+  }
+  if (sicht3 && r.width && r.height) {
+    const K = sicht3.id === null ? ueberblick(r.width, r.height) : sichtAuf(sicht3.id, sicht3.nah, (fahrt ? fahrt.nach : cam).yaw);
+    if (K && fahrt) { K.yaw = fahrt.von.yaw + wickel(K.yaw - fahrt.von.yaw); fahrt.nach = K; }
+    else if (K) { K.yaw = cam.yaw + wickel(K.yaw - cam.yaw); Object.assign(cam, K); }
+  }
+  fordere();
+}
+function zoom3d(x, y, f, sofort) {
+  hinweis3d(false);
+  const w = cv.clientWidth, h = cv.clientHeight, fok = brennweite(w, h);
+  fahrt = null; schwung = null; sicht3 = null;
+  // Die Person unter dem Zeiger – sonst die vorderste im Umkreis von 70 Bildpunkten – wird zum Drehpunkt in der Tiefe:
+  // Der Zielpunkt rückt entlang der Blickrichtung auf ihren Abstand. Das Bild ändert sich dadurch nicht, aber der Zoom
+  // läuft genau auf sie zu, statt durch die vorderen Äste hindurch zur Baummitte zu fliegen.
+  let o = zoomZiel ? null : triff(x, y, 0);
+  if (!o && !zoomZiel) for (const q of treffer) if (Math.hypot(x - q.x, y - q.y) < 70 && (!o || q.d < o.d)) o = q;
+  if (o && o.d > distMin(fok)) {
+    const cy = Math.cos(cam.yaw), sy = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch), dd = o.d - cam.dist;
+    cam.X -= sy * cp * dd; cam.Y -= sp * dd; cam.Z += cy * cp * dd; cam.dist = o.d;
+  }
+  zoomX = x - w / 2; zoomY = y - blickY(h);
+  const ziel = grenze((zoomZiel || cam.dist) / f, distMin(fok), distMax());
+  if (sofort || ruhig) { zoomZiel = 0; zoomAuf(ziel); } else zoomZiel = ziel;
+  fordere();
+}
+// Bedienhinweis: erscheint beim Wechsel nach 3D und verschwindet nach 8 Sekunden oder bei der ersten Bedienung.
+function hinweis3d(an) {
+  const el = $('#hinweis3d');
+  clearTimeout(hinweisUhr);
+  if (!el || (!an && el.style.opacity === '0')) return;
+  el.style.opacity = an ? '' : '0';
+  if (an) hinweisUhr = setTimeout(hinweis3d, 8000, false);
+  else if (modus3d) { const s = sicht3; sicht3 = null; passeAn3d(); sicht3 = s; } // seine Fläche ist wieder frei für Schilder
+}
+function greife3d(e) {
+  hinweis3d(false);
+  fahrt = null; schwung = null; zoomZiel = 0; sicht3 = null;
+  schub3 = e.button === 2 || e.shiftKey; // rechte Maustaste oder Umschalt: verschieben statt drehen
+  drehZeit = performance.now(); drehVY = drehVP = 0;
+  cv.style.cursor = 'grabbing';
+}
+function schiebe3d(dx, dy) {
+  const s = brennweite(cv.clientWidth, cv.clientHeight) / cam.dist;
+  rueck(cam, -dx / s, dy / s);
+  begrenze();
+  fordere();
+}
+function ziehe3d(dx, dy) {
+  if (schub3) { schiebe3d(dx, dy); return; }
+  const jetzt = performance.now(), dtm = Math.max(4, jetzt - drehZeit), dyaw = -dx * 0.0065, dp = dy * 0.005;
+  cam.yaw += dyaw; cam.pitch += dp; // der Baum folgt dem Finger: nach rechts ziehen dreht die Vorderseite nach rechts
+  drehVY = 0.5 * drehVY + 0.5 * dyaw / dtm; drehVP = 0.5 * drehVP + 0.5 * dp / dtm;
+  drehZeit = jetzt;
+  begrenze();
+  fordere();
+}
+function lasse3d() {
+  cv.style.cursor = schweb ? 'pointer' : '';
+  // Trägheit: wer beim Loslassen noch in Bewegung war, dreht sanft aus
+  if (!schub3 && gezogen && !ruhig && performance.now() - drehZeit < 90 && Math.abs(drehVY) + Math.abs(drehVP) > 0.0002)
+    schwung = { yaw: grenze(drehVY, -0.006, 0.006), pitch: grenze(drehVP * 0.5, -0.002, 0.002) };
+  schub3 = false;
+  fordere();
+}
+// Welche Person liegt an dieser Stelle? Zuerst die vorderste Frucht (ein Klick auf eine Frucht trifft immer diese Frucht),
+// dann die Namensschilder, sonst – mit Fangradius, für Finger – die nächste kleine Frucht.
+function triff(x, y, fang) {
+  let best = null;
+  for (const o of treffer) if (Math.hypot(x - o.x, y - o.y) <= Math.max(o.r, 5)) best = o;
+  if (!best) for (const o of treffer) if (o.sa > 0.5 && x >= o.sx0 && x <= o.sx0 + o.sb && y >= o.sy0 && y <= o.sy0 + o.sh) best = o;
+  if (!best) for (const o of treffer) if (Math.hypot(x - o.x, y - o.y) <= Math.max(o.r, 5)) best = o;
+  if (!best) for (const o of treffer) {
+    const a = Math.hypot(x - o.x, y - o.y);
+    if (a <= fang) { best = o; fang = a; }
+  }
+  return best;
+}
+function schwebe3d(x, y) {
+  const o = triff(x, y, 0);
+  if (o === schweb) return;
+  schweb = o;
+  cv.style.cursor = o ? 'pointer' : '';
+  fordere();
+}
+
+// Zeichnet ein Bild. Rückgabe true = es blenden noch Beschriftungen ein oder aus (ein weiteres Bild ist nötig).
+function zeichne3d(dt) {
+  const w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 3); // scharf auch auf hochauflösenden Bildschirmen
+  if (!w || !h) return false;
+  if (!bilder) bilder = male3d();
+  if (!waermeAn && waermeNr < 12 * 58 + 12 * 25) { waermeAn = true; setTimeout(waerme3d, 400); }
+  const B = bilder;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  }
+  if (rollenAlt || rollenId !== auswahl) rollen();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = 1; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const cyw = Math.cos(cam.yaw), syw = Math.sin(cam.yaw), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
+  const fok = brennweite(w, h), mx = w / 2, my = blickY(h), D = cam.dist, TX = cam.X, TY = cam.Y, TZ = cam.Z;
+  // Bewegt sich die Kamera nur ganz langsam (unter einem Bildpunkt je Bild) oder gar nicht, werden die Früchte genau an
+  // ihrem Ort und in ihrer genauen Größe gezeichnet: nichts flimmert oder springt. In schneller Bewegung sieht man das
+  // nicht; dann werden sie auf ganze Bildpunkte gesetzt und unverändert kopiert, was auch ohne Grafikkarte flüssig bleibt.
+  const fein = (Math.abs(cam.yaw - camAlt.yaw) + Math.abs(cam.pitch - camAlt.pitch) + Math.abs(Math.log(cam.dist / camAlt.dist))) * fok +
+    (Math.abs(cam.X - camAlt.X) + Math.abs(cam.Y - camAlt.Y) + Math.abs(cam.Z - camAlt.Z)) * fok / cam.dist < 0.7;
+  Object.assign(camAlt, cam);
+  let qx = 0, qy = 0, qs = 0, qd = 0;
+  const pj = (X, Y, Z) => { // Weltpunkt -> Bildpunkt (qx|qy), Maßstab qs, Abstand qd
+    X -= TX; Y -= TY; Z -= TZ;
+    const xa = X * cyw + Z * syw, za = Z * cyw - X * syw;
+    qd = za * cp - Y * sp + D; qs = fok / (qd > 1 ? qd : 1);
+    qx = mx + xa * qs; qy = my - (Y * cp + za * sp) * qs;
+  };
+
+  // Himmel und Wiese bis zum Horizont. Die beiden Farbverläufe sind einmal je Bildgröße in ein eigenes Bild gemalt
+  // und werden nur noch passend zum Horizont hineinkopiert (viel schneller, als jedes Mal Verläufe zu füllen).
+  // Dieses Bild ist höchstens doppelt so fein wie die Seite (spart Speicher; den weichen Verläufen sieht man es nicht an).
+  // Sonne, Wolken und Hügelketten liegen rundum fest in der Landschaft: beim Drehen wandern sie mit.
+  const yH = my - fok * Math.tan(cam.pitch), ph = fok * 0.5;
+  {
+    const hf = Math.min(dpr, 2), bw = Math.round(w * hf), bh = Math.round(h * hf), pd = Math.round(ph * hf), gd = bh, yd = Math.round(yH * hf);
+    if (!hg || hg.width !== bw || hgPh !== pd || hgG !== gd) {
+      hg = hg || document.createElement('canvas');
+      hg.width = bw; hg.height = pd + gd; hgPh = pd; hgG = gd;
+      const g = hg.getContext('2d'), vh = g.createLinearGradient(0, 0, 0, pd), vw = g.createLinearGradient(0, pd, 0, pd + gd);
+      [[0, B.himmelOben], [0.4, '#7db7ea'], [0.72, '#b9dbf3'], [0.9, '#eef0e4'], [1, '#ffe9c2']].forEach(s => vh.addColorStop(s[0], s[1]));
+      [[0, '#c6de98'], [0.06, '#abd07e'], [0.3, '#87bc5f'], [1, '#5f9a44']].forEach(s => vw.addColorStop(s[0], s[1]));
+      g.fillStyle = vh; g.fillRect(0, 0, bw, pd);
+      g.fillStyle = vw; g.fillRect(0, pd, bw, gd);
+      // Grasstruktur: feine Halme, zum Horizont hin kleiner und blasser. Sie liegt fest im Bild, deshalb nur ganz zart.
+      let z = 9;
+      const zf = () => (z = z * 16807 % 2147483647) / 2147483647;
+      for (let i = Math.min(7000, bw * gd / 260); i > 0; i--) {
+        const t = zf(), l = (1.5 + t * 8) * hf;
+        g.fillStyle = i % 2 ? 'rgba(36,92,32,' + (0.05 + t * 0.12) + ')' : 'rgba(216,240,150,' + (0.04 + t * 0.1) + ')';
+        g.fillRect(zf() * bw, pd + gd * (0.015 + 0.985 * t), Math.max(1, hf * (0.6 + t)), -l);
+      }
+      // dezente Vignette: die Ränder links und rechts sind leicht abgedunkelt
+      const vr = g.createLinearGradient(0, 0, bw, 0);
+      [[0, 'rgba(16,36,52,.24)'], [0.17, 'rgba(16,36,52,0)'], [0.83, 'rgba(16,36,52,0)'], [1, 'rgba(16,36,52,.24)']].forEach(s => vr.addColorStop(s[0], s[1]));
+      g.fillStyle = vr; g.fillRect(0, 0, bw, pd + gd);
+    }
+    ctx.setTransform(dpr / hf, 0, 0, dpr / hf, 0, 0);
+    // Liegt der Horizont über dem Bildrand (Blick steil nach unten), bleibt das Wiesenbild stehen und geht weich in die
+    // einheitliche Wiesenfarbe über – so entsteht nie eine Kante, wo das vorgemalte Bild endet.
+    const yb = yd < 0 && yd > -gd ? 0 : yd;
+    const s0 = Math.max(0, pd - yb), s1 = Math.min(pd + gd, pd - yb + bh); // sichtbarer Ausschnitt des Hintergrundbilds
+    if (yb - pd > 0) { ctx.fillStyle = B.himmelOben; ctx.fillRect(0, 0, bw, yb - pd); }
+    if (s1 > s0) ctx.drawImage(hg, 0, s0, bw, s1 - s0, 0, s0 - pd + yb, bw, s1 - s0);
+    if (yb + gd < bh) { ctx.fillStyle = '#5f9a44'; ctx.fillRect(0, Math.max(0, yb + gd), bw, bh); }
+    if (yb !== yd) { ctx.globalAlpha = -yd / gd; ctx.fillStyle = '#5f9a44'; ctx.fillRect(0, 0, bw, bh); ctx.globalAlpha = 1; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  if (yH > 0) {
+    const wy = cam.yaw + Math.PI;
+    let dx = wickel(4.6 - wy);
+    if (Math.abs(dx) < 1.5) ctx.drawImage(B.sonne, mx - fok * dx - ph * 0.45, yH - ph * 0.6, ph * 0.9, ph * 0.9);
+    for (const q of B.wolken) {
+      dx = wickel(q[0] - wy);
+      const g = q[2] * fok, x = mx - fok * dx, y = yH - q[1] * ph;
+      if (Math.abs(dx) < 1.4 && x + g > 0 && x - g < w && y + g > 0) ctx.drawImage(B.wolke[q[3]], x - g, y - g * 0.5, 2 * g, g);
+    }
+    // vier Hügelketten, nach vorn immer grüner und klarer (Luftperspektive); die dritte ist ein Waldrand mit feiner Zackung
+    for (let k = 0; k < 4; k++) {
+      const hub = fok * [0.036, 0.025, 0.017, 0.009][k], p = [0.4, 2.1, 3.3, 4.4][k], fz = k === 2 ? 0.05 : 0;
+      ctx.fillStyle = ['#a6c2dc', '#9dc2c0', '#7fae84', '#b2d68c'][k];
+      ctx.beginPath(); ctx.moveTo(0, yH + 1);
+      for (let x = 0; x <= w + 12; x += fz ? 5 : 12) {
+        const t = wy - (x - mx) / fok;
+        ctx.lineTo(x, yH - hub * (0.5 + 0.28 * Math.sin(3 * t + p) + 0.16 * Math.sin(7 * t + p * 2.3) + 0.08 * Math.sin(13 * t + p * 4.1) + fz * Math.sin(151 * t) * Math.sin(47 * t + 1)));
+      }
+      ctx.lineTo(w + 12, yH + 1); ctx.fill();
+    }
+  }
+  for (const b of baeume) {
+    pj(b.X, 0, b.Z);
+    if (qd < NAH) continue;
+    const rx = b.R * qs, ry = Math.max(rx * sp, 1);
+    if (!(qx + rx > 0 && qx - rx < w && qy + ry > 0 && qy - ry < h)) continue;
+    // Der Schatten des Hauptbaums wird in seiner aktuellen Größe zwischengespeichert: beim Drehen ändert sie sich nicht,
+    // und unverändert kopieren geht viel schneller als jedes Mal neu strecken.
+    const sb = Math.round(rx * 2 * dpr), sh = Math.round(ry * 2 * dpr);
+    const ruhig2 = sb === schattenB && sh === schattenH; // gleiche Größe wie im Bild davor? (beim Zoomen lohnt das Speichern nicht)
+    if (b === baeume[0]) { schattenB = sb; schattenH = sh; }
+    if (b !== baeume[0] || !ruhig2 || sb * sh > 3e6 || sb < 2 || sh < 2) { ctx.drawImage(B.schatten, qx - rx, qy - ry, rx * 2, ry * 2); continue; }
+    if (!schattenG || schattenG.width !== sb || schattenG.height !== sh) {
+      schattenG = schattenG || document.createElement('canvas');
+      schattenG.width = sb; schattenG.height = sh;
+      schattenG.getContext('2d').drawImage(B.schatten, 0, 0, sb, sh);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(schattenG, Math.round((qx - rx) * dpr), Math.round((qy - ry) * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  for (let i = 0; i < wiese.length; i += 4) {
+    pj(wiese[i], 0, wiese[i + 1]);
+    const g = wiese[i + 2] * qs;
+    if (!(qd > NAH && g >= 1.6 && qx > -g && qx < w + g && qy > 0 && qy < h + g)) continue;
+    if (g < 6) { ctx.fillStyle = ['#ffffff', '#ffe14d', '#4f8f3a', '#f7b6cf'][wiese[i + 3]]; ctx.fillRect(qx - g * 0.2, qy - g * 0.7, g * 0.4, g * 0.4); } // weit weg: nur ein Farbtupfer
+    else ctx.drawImage(B.blumen[wiese[i + 3]], qx - g / 2, qy - g, g, g);
+  }
+
+  // Personen in die Bildebene; daraus Nähe und Ferne für den Dunst
+  let dN = Infinity, dF = -Infinity;
+  for (const o of leute) {
+    pj(o.X, o.Y, o.Z);
+    // Früchte sind in der Ferne etwas größer als maßstäblich, damit man sie im ganzen Baum noch gut sieht
+    const r = Math.max(PR * qs * (1 + 0.8 * Math.max(0, 1 - qs * 2)), 3);
+    o.x = qx; o.y = qy; o.s = qs; o.d = qd; o.r = r;
+    o.sicht = qd > D * 0.3 && qd > NAH && qx > -2 * r && qx < w + 2 * r && qy > -2 * r - 40 && qy < h + 2.6 * r;
+    if (qd > NAH) { if (qd < dN) dN = qd; if (qd > dF) dF = qd; }
+  }
+  const dSp = Math.max(dF - dN, PR * 80), dimm = hatAuswahl; // bei sehr kleinen Bäumen bleibt alles klar
+  const dunst = d => { const v = (d - dN) / dSp * 3.5; return v < 0 ? 0 : v >= 3 ? 3 : v | 0; };
+
+  // Laub. Die hintere Schicht liegt als dichte Krone hinter Ästen und Früchten, die vordere über den Ästen – beide
+  // verdecken nie eine Person. Jedes Büschel wird in passender Größe unverkleinert und auf ganze Bildpunkte gesetzt
+  // kopiert (die Größen liegen in Stufen von 12 % bereit) – das ist auch ohne Grafikkarte schnell. Sehr nahe Büschel blenden aus.
+  const maleLaub = (L, deck) => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 0; i < L.length; i += 5) {
+      pj(L[i], L[i + 1], L[i + 2]);
+      const g = L[i + 3] * qs;
+      if (!(qd > NAH && g > 1.2 && g < 300 && qx > -g && qx < w + g && qy > -g && qy < h + g)) continue;
+      const art = L[i + 4] * 3 + Math.min(2, dunst(qd)), k = Math.max(0, Math.round(Math.log(g * dpr / 4) * 8.82)); // 8.82 = 1 / ln(1,12)
+      ctx.globalAlpha = (g > 200 ? (300 - g) / 100 : 1) * deck;
+      const c = k > 31 ? B.laub[L[i + 4]][art % 3] : laubBild(art * 64 + k); // über ca. 270 Bildpunkte: selten, skaliert
+      if (k > 31) ctx.drawImage(c, (qx - g) * dpr, (qy - g) * dpr, 2 * g * dpr, 2 * g * dpr);
+      else ctx.drawImage(c, Math.round(qx * dpr - c.width / 2), Math.round(qy * dpr - c.width / 2));
+    }
+    ctx.globalAlpha = 1;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  maleLaub(laub, 1);
+
+  // Äste und Bänder in die Bildebene
+  for (const a of aeste) {
+    const o = a.o, pts = a.pts;
+    let ok = true, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    for (let i = 0, j = 0; i < a.n; i++, j += 3) {
+      pj(pts[j], pts[j + 1], pts[j + 2]);
+      if (qd < NAH) { ok = false; break; }
+      pkx[o + i] = qx; pky[o + i] = qy; pks[o + i] = qs;
+      if (qx < x0) x0 = qx; if (qx > x1) x1 = qx; if (qy < y0) y0 = qy; if (qy > y1) y1 = qy;
+    }
+    const rm = a.rad[0] * pks[o] + 3;
+    a.sicht = ok && x1 > -rm && x0 < w + rm && y1 > -rm && y0 < h + rm;
+    if (!a.sicht) continue;
+    a.d = fok / pks[o + (a.n >> 1)];
+    a.st = dunst(a.d);
+  }
+  for (const b of baender) {
+    const o = b.o, pts = b.pts;
+    b.sicht = b.A.d > NAH && b.B.d > NAH && (b.A.sicht || b.B.sicht);
+    if (!b.sicht) continue;
+    for (let i = 0, j = 0; i < b.n; i++, j += 3) { pj(pts[j], pts[j + 1], pts[j + 2]); pkx[o + i] = qx; pky[o + i] = qy; pks[o + i] = qs; }
+    const m = b.n >> 1;
+    if (b.n === 2) { b.sx = (pkx[o] + pkx[o + 1]) / 2; b.sy = (pky[o] + pky[o + 1]) / 2; b.ss = (pks[o] + pks[o + 1]) / 2; }
+    else { b.sx = pkx[o + m]; b.sy = pky[o + m]; b.ss = pks[o + m]; }
+    b.d = Math.max(b.A.d, b.B.d) + 1.5;
+  }
+
+  // Holz zuerst, damit ein Ast nie eine Person verdeckt: erst Ranken und dünne Äste (weit weg) als einfache Linien,
+  // dann die dicken Äste als Bänder, von hinten nach vorn.
+  const linie = (o, n) => {
+    ctx.beginPath(); ctx.moveTo(pkx[o], pky[o]);
+    for (let i = 1; i < n; i++) ctx.lineTo(pkx[o + i], pky[o + i]);
+  };
+  holz3.length = 0;
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'bevel';
+  for (const it of aeste) {
+    if (!it.sicht) continue;
+    const o = it.o, n = it.n, h0 = it.rad[0] * pks[o];
+    if (it.art === 3) {
+      // Ranke: dünne grüne Linie zu einem Kind, das in einem anderen Baum sitzt
+      ctx.globalAlpha = dimm && !it.hv ? 0.35 : 0.85;
+      ctx.strokeStyle = it.hv ? '#e0a318' : '#5f8f4a'; ctx.lineWidth = grenze(3 * pks[o], 1.2, 4);
+      linie(o, n); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (h0 < 1.6) {
+      // dünner Ast (weit weg): einfache Linie durch jeden zweiten Punkt
+      ctx.strokeStyle = it.hv ? '#d99a12' : B.holz[it.st + (dimm ? 2 : 0)]; ctx.lineWidth = it.hv ? 2.4 : h0 > 0.8 ? 2.2 : 1.2;
+      ctx.beginPath(); ctx.moveTo(pkx[o], pky[o]);
+      for (let i = 2; i < n - 1; i += 2) ctx.lineTo(pkx[o + i], pky[o + i]);
+      ctx.lineTo(pkx[o + n - 1], pky[o + n - 1]);
+      ctx.stroke();
+    } else holz3.push(it);
+  }
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  holz3.sort((a, b) => b.d - a.d);
+  // Umriss eines Astes: f = Anteil der Breite, v = Versatz quer zum Ast (in halben Breiten). e0, e1 = Form am Anfang
+  // und am Ende: 0 = rund, 1 = läuft auf den Umriss des Grundtons zusammen (dort geht der Ast in einen anderen über:
+  // so entsteht keine dunkle Kappe über dem Nachbarn), 2 = gerade abgeschnitten (Stammfuß am Boden).
+  let vg = 0;
+  const band = (o, n, f, v, e0, e1) => {
+    const m = n - 1, f0 = e0 === 1 ? 0.72 : f, v0 = e0 === 1 ? vg : v, f1 = e1 === 1 ? 0.72 : f, v1 = e1 === 1 ? vg : v;
+    ctx.beginPath(); ctx.moveTo(pkx[o] + nrx[0] * (v0 + f0), pky[o] + nry[0] * (v0 + f0));
+    for (let i = 1; i < m; i++) ctx.lineTo(pkx[o + i] + nrx[i] * (v + f), pky[o + i] + nry[i] * (v + f));
+    ctx.lineTo(pkx[o + m] + nrx[m] * (v1 + f1), pky[o + m] + nry[m] * (v1 + f1));
+    if (e1) ctx.lineTo(pkx[o + m] + nrx[m] * (v1 - f1), pky[o + m] + nry[m] * (v1 - f1));
+    else { const a = Math.atan2(nry[m], nrx[m]); ctx.arc(pkx[o + m] + nrx[m] * v, pky[o + m] + nry[m] * v, f * Math.hypot(nrx[m], nry[m]), a, a - Math.PI, true); }
+    for (let i = m - 1; i > 0; i--) ctx.lineTo(pkx[o + i] + nrx[i] * (v - f), pky[o + i] + nry[i] * (v - f));
+    if (e0) ctx.lineTo(pkx[o] + nrx[0] * (v0 - f0), pky[o] + nry[0] * (v0 - f0));
+    else { const a = Math.atan2(nry[0], nrx[0]); ctx.arc(pkx[o] + nrx[0] * v, pky[o] + nry[0] * v, f * Math.hypot(nrx[0], nry[0]), a + Math.PI, a, true); }
+    ctx.closePath();
+  };
+  for (const it of holz3) {
+    const o = it.o, n = it.n, stamm = it.art === 1 || it.art === 4, h0 = it.rad[0] * pks[o];
+    // Stamm und Wurzeln bleiben auch bei einer Auswahl holzfarben und deckend (sie verblassen nicht mit den übrigen Ästen)
+    const st = stamm ? (dimm ? Math.min(it.st, 1) : it.st) : it.st + (dimm && !it.hv ? 2 : 0);
+    // Band, das sich zur Spitze hin verjüngt
+    for (let i = 0; i < n; i++) {
+      const i0 = i ? i - 1 : 0, i1 = i < n - 1 ? i + 1 : i;
+      const tx2 = pkx[o + i1] - pkx[o + i0], ty2 = pky[o + i1] - pky[o + i0], l = Math.hypot(tx2, ty2) || 1, hw = Math.max(0.6, it.rad[i] * pks[o + i]);
+      nrx[i] = -ty2 / l * hw; nry[i] = tx2 / l * hw;
+    }
+    // Plastisch wie ein runder Ast: außen die Schattenfarbe, darüber zur Lichtseite (oben links) versetzt der Grundton
+    // und ein schmaler heller Streifen. Dünne Äste bekommen nur den Grundton. Die Enden sind rund; wo ein Ast aus einem
+    // anderen wächst oder sich gabelt, beginnt die Schattenfarbe erst hinter dem Übergang.
+    const rundung = h0 > 4.2, m = n >> 1, sg = nrx[m] * -0.5 + nry[m] * -0.85 < 0 ? -1 : 1, fuss = it.art === 1 ? 2 : 0;
+    vg = 0.17 * sg;
+    ctx.fillStyle = rundung ? B.holzDunkel[st] : B.holz[st];
+    if (rundung) band(o, n, 1, 0, fuss || (it.art === 2 ? 0 : 1), it.kis || it.art === 1 ? 1 : 0); else band(o, n, 1, 0, fuss, 0);
+    ctx.fill();
+    if (it.hv) { ctx.strokeStyle = '#f0b429'; ctx.lineWidth = 2; ctx.stroke(); }
+    if (!rundung) continue;
+    ctx.fillStyle = B.holz[st]; band(o, n, 0.72, vg, fuss, 0); ctx.fill();
+    if (h0 > 6) { ctx.fillStyle = B.holzHell[st]; band(o, n, 0.3, 0.48 * sg, fuss, 0); ctx.fill(); }
+    if (it.art === 1 && h0 > 7 && st < 3) {
+      // Rinde am Stamm: ein Muster aus Furchen, das mit dem Stamm mitläuft und mit ihm größer und kleiner wird
+      if (!rindeM) rindeM = ctx.createPattern(B.rinde, 'repeat');
+      if (rindeM.setTransform && window.DOMMatrix) {
+        const w0 = Math.atan2(pky[o + n - 1] - pky[o], pkx[o + n - 1] - pkx[o]) + 1.5708, kk = Math.max(0.25, pks[o] * 1.6), cw = Math.cos(w0) * kk, sw = Math.sin(w0) * kk;
+        rindeM.setTransform(new DOMMatrix([cw, sw, -sw, cw, pkx[o], pky[o]]));
+      }
+      ctx.globalAlpha = Math.min(0.75, (h0 - 7) / 8);
+      ctx.fillStyle = rindeM; band(o, n, 1, 0, 2, 1); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+  if (!dimm) maleLaub(laubV, 0.94); // bei einer Auswahl bleibt der Blick auf die hervorgehobenen Äste frei
+
+  // Bänder und Früchte gemeinsam von hinten nach vorn
+  reihen.sort((a, b) => b.d - a.d);
+  treffer = [];
+  let schrift = '';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const it of reihen) {
+    if (!it.sicht) continue;
+    if (it.typ === 0) {
+      // Person: Frucht mit Initialen
+      // was der Kamera sehr nahe kommt, wird durchsichtig und verschwindet, statt das Bild zu verdecken
+      const r = it.r, st = dunst(it.d) + (dimm && !it.rolle ? 2 : 0), k = r / 44, nahe = Math.min(1, (it.d / D - 0.3) * 5);
+      it.nahe = nahe;
+      if (nahe > 0.5) treffer.push(it);
+      ctx.globalAlpha = nahe;
+      if (it.rolle === 2) ctx.drawImage(B.glut, it.x - r * 2.3, it.y - r * 2.3, r * 4.6, r * 4.6);
+      const S = Math.round(128 * k * dpr);
+      if (S <= 120) {
+        // kleine und mittlere Früchte: fertig verkleinertes Bild. In schneller Bewegung unverändert auf ganze Bildpunkte
+        // kopiert (schnell, auch ohne Grafikkarte), sonst genau an Ort und Größe.
+        const c = fruchtBild(((it.tot ? 6 : 0) + st) * 128 + S);
+        if (fein) ctx.drawImage(c, it.x - 64 * k, it.y - 72 * k, 128 * k, 128 * k);
+        else {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.drawImage(c, Math.round((it.x - 64 * k) * dpr), Math.round((it.y - 72 * k) * dpr));
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+      } else ctx.drawImage(B.frucht[it.tot ? 1 : 0][st], it.x - 64 * k, it.y - 72 * k, 128 * k, 128 * k);
+      if (it.rolle || it === schweb) {
+        ctx.strokeStyle = it.rolle === 2 ? '#ffffff' : it.rolle ? '#ffcf4a' : '#2f4858';
+        ctx.lineWidth = it.rolle === 2 ? Math.max(2.5, r * 0.11) : 2;
+        ctx.beginPath(); ctx.arc(it.x, it.y, r + ctx.lineWidth * 0.8, 0, 6.2832); ctx.stroke();
+      }
+      if (r >= 9) {
+        if (dimm && !it.rolle) ctx.globalAlpha = 0.6 * nahe;
+        const sf = '700 ' + Math.round(r * (it.ini.length > 1 ? 0.78 : 0.95)) + SCHRIFT;
+        if (sf !== schrift) ctx.font = schrift = sf; // Schrift nur wechseln, wenn sich die Größe ändert
+        if (r >= 12) { ctx.fillStyle = it.tot ? 'rgba(255,255,255,.6)' : 'rgba(90,10,6,.55)'; ctx.fillText(it.ini, it.x, it.y + r * 0.06 + Math.max(1, r * 0.05)); } // feiner Schatten: besser lesbar
+        ctx.fillStyle = it.tot ? '#3f4651' : '#ffffff';
+        ctx.fillText(it.ini, it.x, it.y + r * 0.06);
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      // Band zwischen Partnern: Ehe = durchgezogen mit Ringen, Partnerschaft = gestrichelt, beendet = roter Schrägstrich
+      const o = it.o, lw2 = grenze(4.5 * it.ss, 1.3, 7), rr = 8 * it.ss;
+      ctx.globalAlpha = dimm && !it.hv ? 0.4 : 1;
+      ctx.lineCap = 'butt';
+      if (it.part) ctx.setLineDash([lw2 * 2.4, lw2 * 1.8]);
+      linie(o, it.n);
+      if (lw2 > 2.4) { ctx.strokeStyle = '#a06f0a'; ctx.lineWidth = lw2 + 1.6; ctx.stroke(); }
+      ctx.strokeStyle = '#ffc93c'; ctx.lineWidth = lw2; ctx.stroke();
+      ctx.setLineDash([]); ctx.lineCap = 'round';
+      if (rr >= 2.5) {
+        if (!it.part) {
+          ctx.strokeStyle = '#a06f0a'; ctx.fillStyle = '#fff6d8'; ctx.lineWidth = Math.max(1, rr * 0.3);
+          for (const dx of [-0.6, 0.6]) { ctx.beginPath(); ctx.arc(it.sx + dx * rr, it.sy, rr * 0.8, 0, 6.2832); ctx.fill(); ctx.stroke(); }
+        }
+        if (it.aus) {
+          ctx.strokeStyle = '#d43c2a'; ctx.lineWidth = Math.max(1.6, rr * 0.4);
+          ctx.beginPath(); ctx.moveTo(it.sx - rr * 1.1, it.sy + rr * 1.7); ctx.lineTo(it.sx + rr * 1.1, it.sy - rr * 1.7); ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Beschriftungen in Detailstufen: nah = Name und Daten, mittel = nur der Name, fern = nur die Köpfe der Äste (Personen
+  // mit Nachkommen), ältere Generationen zuerst. Kein Schild überdeckt ein anderes, eine Frucht, die Legende oder die
+  // Knöpfe, und jedes bleibt ganz im Bild. Passt es nicht unter die Frucht, weicht es aus (rechts, links, darüber, eine
+  // Zeile tiefer oder höher); passt auch das nicht, schrumpft es auf den Namen oder entfällt. Nur das Schild der
+  // ausgewählten Person und der Person unter der Maus erscheint immer.
+  const kand = schilder, frei = belegt3;
+  kand.length = 0; frei.length = 0;
+  for (let i = 0; i < sperr3.length; i++) frei.push(sperr3[i]);
+  let verdeckt = false; // liegt eine größere Frucht unter der Legende?
+  for (const o of leute) {
+    o.zs = 0; o.ok = false;
+    if (!o.sicht) { o.sa = 0; continue; }
+    const fest = o.rolle > 0 || o === schweb;
+    // ist jemand ausgewählt, treten die Schilder der übrigen Personen zurück (nur aus der Nähe, nur der Name)
+    o.zs = fest || (!dimm && o.r >= 21) ? 2 : o.r >= (dimm ? 17 : 10) || (!dimm && o.kopf && (o.r >= 4.5 || o.g <= 1)) ? 1 : 0;
+    if (o.zs) { o.pri = fest ? 1e6 * (o.rolle + (o === schweb ? 1.5 : 0)) + o.r : o.r * (o.sa > 0.5 ? 5.2 : 4) - o.g * 25 + (o.kopf ? 40 : 0); kand.push(o); }
+    // jede Frucht ab 4 Bildpunkten Radius bleibt frei. Nur wenn der ganze Baum winzig ist (Handy, Gesamtansicht),
+    // dürfen die wenigen Namen der ältesten Generationen über den kleineren Pünktchen stehen.
+    if (o.r >= 4) frei.push(o.x - o.r * 0.9, o.y - o.r * 0.9, o.x + o.r * 0.9, o.y + o.r * 0.9);
+    if (o.r >= 8 && o.y - o.r < legU && o.x - o.r < legR) verdeckt = true;
+  }
+  if (verdeckt !== legBlass) { legBlass = verdeckt; $('#legende').style.opacity = verdeckt ? '0.3' : ''; }
+  kand.sort((a, b) => b.pri - a.pri);
+  const passtIn = (L, x0, y0, x1, y1) => {
+    for (let i = 0; i < L.length; i += 4) if (x0 < L[i + 2] + 3 && x1 > L[i] - 3 && y0 < L[i + 3] + 2 && y1 > L[i + 1] - 2) return false;
+    return true;
+  };
+  const passt = (x0, y0, x1, y1) => passtIn(frei, x0, y0, x1, y1);
+  // Sucht einen freien Platz für das Schild von o in Stufe st (2 = mit Daten). zwang: notfalls unter die Frucht.
+  const platz = (o, st, zwang) => {
+    const zwei = st === 2 && !!o.dat, bb = Math.min((st === 2 ? Math.max(o.lb, zwei ? o.db : 0) : o.nb) + 16, w - 8), bh = zwei ? 36 : 22;
+    const yu = o.y + o.r + 5, yo = o.y - o.r * 1.5 - 5 - bh, nah = nah3;
+    // Nur was im Umkreis aller zehn Plätze liegt, kann stören: diese wenigen Flächen einmal heraussuchen (spart viel Zeit)
+    const ux0 = grenze(o.x - o.r - 6 - bb, 4, w - 4 - bb) - 3, ux1 = grenze(o.x + o.r + 6, 4, w - 4 - bb) + bb + 3;
+    const uy0 = grenze(yo - bh - 3, 4, h - 4 - bh) - 2, uy1 = grenze(yu + bh + 3, 4, h - 4 - bh) + bh + 2;
+    nah.length = 0;
+    if (!zwang) for (let i = 0; i < frei.length; i += 4) if (frei[i] < ux1 && frei[i + 2] > ux0 && frei[i + 1] < uy1 && frei[i + 3] > uy0) nah.push(frei[i], frei[i + 1], frei[i + 2], frei[i + 3]);
+    // Plätze: unter der Frucht, rechts, links, darüber, eine Zeile tiefer, eine Zeile höher, dann die vier Ecken
+    for (let i = 0; i < (zwang ? 1 : 10); i++) {
+      const x0 = grenze(i === 1 || i === 6 || i === 8 ? o.x + o.r * (i === 1 ? 1 : 0.6) + 6 : i === 2 || i === 7 || i === 9 ? o.x - o.r * (i === 2 ? 1 : 0.6) - 6 - bb : o.x - bb / 2, 4, w - 4 - bb);
+      const y0 = grenze(i === 0 ? yu : i < 3 ? o.y - bh / 2 : i === 3 ? yo : i === 4 ? yu + bh + 3 : i === 5 ? yo - bh - 3 : i < 8 ? o.y + o.r * 0.6 + 3 : o.y - o.r * 0.6 - 3 - bh, 4, h - 4 - bh);
+      if (!zwang && !passtIn(nah, x0, y0, x0 + bb, y0 + bh)) continue;
+      frei.push(x0, y0, x0 + bb, y0 + bh);
+      o.ok = true; o.st = st; o.sx0 = x0; o.sy0 = y0; o.sb = bb; o.sh = bh; o.sdx = x0 - o.x; o.sdy = y0 - o.y;
+      return true;
+    }
+    return false;
+  };
+  let versuche = 0;
+  for (const o of kand) {
+    const zwang = o.rolle === 2 || o === schweb;
+    if (!zwang && ++versuche > 400) break; // sehr große Bäume: Aufwand begrenzen
+    if (!platz(o, o.zs, false) && !(o.zs === 2 && platz(o, 1, false)) && zwang) platz(o, o.zs, true);
+  }
+  let lebt = false;
+  const schritt = dt / 130;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const rund = (x, y, b, hh, r) => {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + b, y, x + b, y + hh, r); ctx.arcTo(x + b, y + hh, x, y + hh, r); ctx.arcTo(x, y + hh, x, y, r); ctx.arcTo(x, y, x + b, y, r);
+    ctx.closePath();
+  };
+  const schild = o => {
+    const gew = o.rolle === 2, voll = o.st === 2, mxs = o.sx0 + o.sb / 2;
+    // wird die Frucht nahe der Kamera durchsichtig, verblasst ihr Schild mit
+    ctx.globalAlpha = o.sa * o.nahe * (dimm && !o.rolle && o !== schweb ? 0.82 : 1);
+    const deck = ctx.globalAlpha;
+    ctx.globalAlpha = deck * 0.2; ctx.fillStyle = '#12281c';
+    rund(o.sx0 - 0.5, o.sy0 + 1.5, o.sb + 1, o.sh + 1, 10); ctx.fill(); // weicher Schatten unter dem Schild
+    ctx.globalAlpha = deck;
+    rund(o.sx0, o.sy0, o.sb, o.sh, 9);
+    ctx.fillStyle = gew ? '#2f4858' : o.tot ? 'rgba(236,237,233,.96)' : 'rgba(255,255,255,.96)'; ctx.fill();
+    ctx.strokeStyle = gew ? '#ffffff' : o.rolle ? '#e0a318' : o === schweb ? '#2f4858' : 'rgba(40,60,40,.28)';
+    ctx.lineWidth = o.rolle || o === schweb ? 1.6 : 1; ctx.stroke();
+    ctx.font = S_NAME; ctx.fillStyle = gew ? '#ffffff' : o.tot ? '#545b65' : '#1f2933';
+    ctx.fillText(voll ? o.lang : o.name, mxs, o.sy0 + 11.5);
+    if (o.sh > 30) { ctx.font = S_DATUM; ctx.fillStyle = gew ? '#d3e0e8' : '#5a6672'; ctx.fillText(o.dat, mxs, o.sy0 + 26.5); }
+  };
+  for (const o of leute) {
+    const ziel = o.ok ? 1 : 0;
+    if (o.sa !== ziel) { o.sa = ziel ? Math.min(1, o.sa + schritt) : Math.max(0, o.sa - schritt); if (o.sa !== ziel) lebt = true; }
+    if (!ziel && o.sa > 0) { o.sx0 = o.x + o.sdx; o.sy0 = o.y + o.sdy; schild(o); } // blendet an seinem letzten Platz aus
+  }
+  for (let i = kand.length - 1; i >= 0; i--) if (kand[i].ok) schild(kand[i]);
+  // Datum an den Verbindungen: nur aus der Nähe oder bei der ausgewählten Person
+  ctx.font = S_DATUM;
+  for (const b of baender) {
+    if (!b.sicht || !b.text || !(b.hv || b.ss >= 0.8)) continue;
+    const bb = b.tb + 12, x0 = b.sx - bb / 2, y0 = b.sy - 9 * b.ss - 22;
+    if (!passt(x0, y0, x0 + bb, y0 + 17)) continue;
+    frei.push(x0, y0, x0 + bb, y0 + 17);
+    ctx.globalAlpha = dimm && !b.hv ? 0.7 : 1;
+    rund(x0, y0, bb, 17, 8);
+    ctx.fillStyle = 'rgba(255,245,210,.94)'; ctx.fill();
+    ctx.fillStyle = '#7a4e16'; ctx.fillText(b.text, b.sx, y0 + 9);
+  }
+  ctx.globalAlpha = 1;
+  return lebt;
+}
+
+/* ---------- Gemeinsames Zeichnen / Ansicht ---------- */
+let neuDialog = false; // "+ Person": Formular für eine einzelne Person ist offen
+function zeigeStart() {
+  const leer = !daten.personen.length;
+  $('#start').hidden = !(leer || neuDialog);
+  $('#startTitel').textContent = leer ? 'Grundperson anlegen' : 'Person ohne Verbindung anlegen';
+  $('#startAbbr').hidden = leer;
+}
+function zeichne() {
+  L = layout();
+  zeigeStart();
+  if (modus3d) { baue3d(); fordere(); } else zeichne2d();
+}
+// Schiebt die Karten der genannten Personen in den sichtbaren Bereich (Panel verkleinert die Fläche).
+function zeige(ids) {
+  if (modus3d) return;
+  const qs = ids.map(id => L.pos.get(id)).filter(Boolean);
+  if (!qs.length) return;
+  const w = fl.clientWidth, h = fl.clientHeight, rand = 12;
+  if (sk < LESBAR) zoomAn(tx + (qs[0].x + KW / 2) * sk, ty + (qs[0].y + KH / 2) * sk, LESBAR / sk);
+  const box = l => ({
+    x0: Math.min.apply(null, l.map(q => q.x)), x1: Math.max.apply(null, l.map(q => q.x)) + KW,
+    y0: Math.min.apply(null, l.map(q => q.y)), y1: Math.max.apply(null, l.map(q => q.y)) + KH
+  });
+  let b = box(qs);
+  if ((b.x1 - b.x0) * sk > w - 2 * rand || (b.y1 - b.y0) * sk > h - 2 * rand) b = box([qs[0]]);
+  const schub = (a0, a1, t, gr) => {
+    if ((a1 - a0) * sk > gr - 2 * rand) return gr / 2 - (a0 + a1) / 2 * sk; // passt nicht: mittig
+    if (t + a0 * sk < rand) return rand - a0 * sk;
+    if (t + a1 * sk > gr - rand) return gr - rand - a1 * sk;
+    return t;
+  };
+  tx = schub(b.x0, b.x1, tx, w);
+  ty = schub(b.y0, b.y1 + 54 / sk, ty, h); // unten Platz für die Zoom-Buttons lassen
+  anwenden();
+}
+// ganz = true (Button "Einpassen"): ganzer Baum. Sonst lesbare Mindestgröße, notfalls auf eine Person zentriert.
+function einpassen(ganz) {
+  const w = fl.clientWidth, h = fl.clientHeight;
+  if (modus3d) {
+    // Feste Startperspektive (keine Suche nach der besten Blickrichtung mehr). ganz = true: der ganze Baum.
+    // Sonst: zur ausgewählten Person, wenn es eine gibt. Die Kamera fährt weich dorthin.
+    const z = ueberblick(w || 800, h || 600);
+    if (kamNeu) { // erster Blick nach dem Umschalten: von etwas weiter weg und höher hereinfahren
+      kamNeu = false; fahrt = null; schwung = null; zoomZiel = 0;
+      Object.assign(cam, z, { yaw: z.yaw - 0.55, pitch: z.pitch + 0.22, dist: z.dist * 1.35 });
+    }
+    if (!ganz && p3.has(auswahl)) fahreZuPerson(auswahl, false); else { sicht3 = { id: null }; fahre(z, 900); }
+    return;
+  }
+  const bw = L.breite + KW, bh = L.maxG * ZH + KH;
+  const pass = Math.min(w / (bw + 40), h / (bh + 80));
+  sk = grenze(pass, ganz ? 0.002 : LESBAR, 1.2);
+  tx = (w - bw * sk) / 2;
+  ty = (h - bh * sk) / 2;
+  const q = L.pos.get(auswahl) || L.pos.get((daten.personen[0] || {}).id);
+  if (sk > pass && q) { // Baum passt nicht lesbar hinein: auf Auswahl bzw. Grundperson zentrieren
+    if (bw * sk > w - 24) tx = w / 2 - (q.x + KW / 2) * sk;
+    if (bh * sk > h - 24) ty = h / 2 - (q.y + KH / 2) * sk;
+  }
+  anwenden();
+}
+function zoomKnopf(f) {
+  if (modus3d) zoom3d(cv.clientWidth / 2, cv.clientHeight / 2, f);
+  else zoomAn(fl.clientWidth / 2, fl.clientHeight / 2, f);
+}
+function setzeModus(d3) {
+  modus3d = d3;
+  kamNeu = d3; schweb = null; sicht3 = null; cv.style.cursor = '';
+  buehne.classList.toggle('d3', d3);
+  $('#b2d').setAttribute('aria-pressed', String(!d3));
+  $('#b3d').setAttribute('aria-pressed', String(d3));
+  zeichne();
+  einpassen();
+  if (d3) { hinweis3d(true); passeAn3d(); } // Bedienhinweis zeigen, Flächen von Legende und Knöpfen merken
+}
+function waehle(id) {
+  auswahl = id;
+  ansicht = 'person';
+  zeigePanel();
+  zeichne();
+  if (modus3d) { if (id) fahreZuPerson(id, false); else sicht3 = null; } // 3D: weiche Fahrt zur ausgewählten Person
+  if (id) zeige([id]);
+}
+
+/* ---------- Zeiger: Verschieben / Drehen / Zoomen ---------- */
+const zeiger = new Map();
+let gezogen = false, startP = null;
+fl.addEventListener('pointerdown', e => {
+  zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (zeiger.size === 1) { gezogen = false; startP = { x: e.clientX, y: e.clientY }; }
+  if (modus3d) greife3d(e);
+});
+window.addEventListener('pointermove', e => {
+  const z = zeiger.get(e.pointerId);
+  if (!z) return;
+  if (zeiger.size === 1) {
+    if (!gezogen && Math.hypot(e.clientX - startP.x, e.clientY - startP.y) < 6) return;
+    gezogen = true;
+    const dx = e.clientX - z.x, dy = e.clientY - z.y;
+    if (modus3d) ziehe3d(dx, dy);
+    else { tx += dx; ty += dy; anwenden(); }
+    z.x = e.clientX; z.y = e.clientY;
+  } else if (zeiger.size === 2) {
+    gezogen = true;
+    const mess = () => {
+      const a = Array.from(zeiger.values());
+      return { d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1, x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2 };
+    };
+    const vor = mess();
+    z.x = e.clientX; z.y = e.clientY;
+    const nach = mess(), f = nach.d / vor.d;
+    if (modus3d) { const r = fl.getBoundingClientRect(); schiebe3d(nach.x - vor.x, nach.y - vor.y); zoom3d(nach.x - r.left, nach.y - r.top, f, true); }
+    else {
+      const r = fl.getBoundingClientRect();
+      tx += nach.x - vor.x; ty += nach.y - vor.y;
+      zoomAn(nach.x - r.left, nach.y - r.top, f);
+    }
+  }
+});
+function zeigerEnde(e) {
+  if (!zeiger.has(e.pointerId)) return;
+  zeiger.delete(e.pointerId);
+  if (!zeiger.size) { if (modus3d) lasse3d(); setTimeout(() => { gezogen = false; }, 0); }
+}
+// 3D: Person erst beim "click" wählen (wie die 2D-Karten). So gibt es keinen Folge-Klick,
+// der auf Touch-Geräten im gerade geöffneten Panel landet. Zweiter Klick/Tipp kurz danach an derselben Stelle: nah
+// an die Person heran. Weil sich das Bild nach dem ersten Klick schon bewegt (Panel, Kamerafahrt), zählt für den
+// zweiten Klick das Bild vom ersten: Lag dort eine andere, benachbarte Person, wird sie gewählt statt nah heranzufahren.
+cv.addEventListener('click', e => {
+  if (gezogen || !modus3d) return;
+  const r = fl.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, jetzt = performance.now();
+  let o = null;
+  if (klickId && jetzt - klickZeit < 450 && Math.hypot(x - klickX, y - klickY) < 30) {
+    for (const q of klickBild) if (Math.hypot(x - q.x, y - q.y) <= Math.max(q.r, 5)) o = q.o;
+    if (!o || o.id === klickId) { klickZeit = 0; fahreZuPerson(klickId, true); return; }
+  } else o = triff(x, y, 22);
+  klickBild = treffer.filter(q => Math.hypot(x - q.x, y - q.y) < 60 + q.r).map(q => ({ o: q, x: q.x, y: q.y, r: q.r }));
+  klickId = o ? o.id : null; klickZeit = jetzt; klickX = x; klickY = y;
+  if (o) waehle(o.id);
+});
+// 3D mit der Maus: Person unter dem Zeiger hervorheben; das Kontextmenü weicht dem Verschieben mit der rechten Taste.
+fl.addEventListener('pointermove', e => {
+  if (!modus3d || zeiger.size || e.pointerType !== 'mouse') return;
+  const r = fl.getBoundingClientRect();
+  schwebe3d(e.clientX - r.left, e.clientY - r.top);
+});
+fl.addEventListener('pointerleave', () => { if (modus3d && !zeiger.size) schwebe3d(-1e5, -1e5); });
+fl.addEventListener('contextmenu', e => { if (modus3d) e.preventDefault(); });
+window.addEventListener('pointerup', zeigerEnde);
+window.addEventListener('pointercancel', zeigerEnde);
+fl.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f = Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : 0.0015));
+  if (modus3d) { const r = fl.getBoundingClientRect(); zoom3d(e.clientX - r.left, e.clientY - r.top, f); }
+  else { const r = fl.getBoundingClientRect(); zoomAn(e.clientX - r.left, e.clientY - r.top, f); }
+}, { passive: false });
+welt.addEventListener('click', e => {
+  const k = e.target.closest('.karte');
+  if (k && !gezogen) waehle(k.dataset.id);
+});
+if (window.ResizeObserver) new ResizeObserver(() => { if (modus3d) passeAn3d(); }).observe(fl);
+
+/* ---------- Panel ---------- */
+function pLink(p) {
+  return '<button type="button" class="link" data-p="' + esc(p.id) + '">' + esc(nameVon(p)) + '</button>';
+}
+function optionVon(p) {
+  return '<option value="' + esc(p.id) + '">' + esc(nameVon(p)) + (p.geburtsdatum ? ' (* ' + esc(p.geburtsdatum.slice(0, 4)) + ')' : '') + '</option>';
+}
+// Hinweis unter einer leeren Auswahlliste "bestehende Person"
+const keinePerson = () => '<p class="leer">' + (daten.personen.length > 1
+  ? 'Keine passende Person – bei den anderen würden die Generationen nicht zusammenpassen, oder sie sind schon verbunden.'
+  : 'Noch keine weitere Person vorhanden.') + '</p>';
+let panelStand = ''; // welche Person und Ansicht das Panel zuletzt zeigte (für die Scrollposition)
+function zeigePanel() {
+  const p = person(auswahl);
+  if (!p) { panel.hidden = true; panelStand = ''; return; }
+  panel.hidden = false;
+  // Wird dieselbe Ansicht nur neu aufgebaut, bleibt die Scrollposition erhalten.
+  const stand = auswahl + '|' + ansicht, oben = stand === panelStand ? panel.scrollTop : 0;
+  panelStand = stand;
+  const es = daten.ehen.filter(e => e.partner.indexOf(p.id) >= 0);
+  const partnerVon = e => person(e.partner.find(x => x !== p.id));
+  let h;
+  if (ansicht === 'person') {
+    h = '<div class="pkopf"><h2 id="pName">' + esc(nameVon(p)) + '</h2><button type="button" id="pZu" aria-label="Schließen">×</button></div>' +
+      '<div id="pFelder">' + felderHtml(p) + '</div>' +
+      '<div class="reihe"><button type="button" id="bHeirat">' + RINGE + ' Partner</button><button type="button" id="bKind">Kind</button><button type="button" id="bEltern">Eltern</button></div>' +
+      '<h3>Partner und Kinder</h3>';
+    h += es.length ? es.map(e => {
+      const q = partnerVon(e);
+      const kinder = e.kinder.map(person).filter(Boolean).map(k => '<span class="kind">' + pLink(k) +
+        '<button type="button" class="lz" data-lk="' + esc(k.id) + '" data-von="' + esc(e.id) + '" aria-label="Kind-Verbindung zu ' + esc(nameVon(k)) + ' lösen" title="Kind-Verbindung lösen">×</button></span>').join('');
+      const part = e.art === 'partnerschaft';
+      return '<div class="ehe"><div class="ekopf"><span>' + (q ? (part ? '' : RINGE + ' ') + pLink(q) : 'Ohne zweiten Elternteil') + '</span>' +
+        (q ? '<button type="button" class="lz" data-le="' + esc(e.id) + '" aria-label="Verbindung mit ' + esc(nameVon(q)) + ' lösen" title="Verbindung lösen">×</button>' : '') + '</div>' +
+        (q ? '<label>Art<select data-eart="' + esc(e.id) + '"><option value="ehe">Ehe</option><option value="partnerschaft"' + (part ? ' selected' : '') + '>Partnerschaft</option></select></label>' +
+          '<label>' + (part ? 'Zusammen seit' : 'Heirat am') + '<input type="date" data-ehe="' + esc(e.id) + '" value="' + esc(e.heiratsdatum) + '"></label>' +
+          '<label>' + (part ? 'Trennung am' : 'Scheidung am') + '<input type="date" data-ende="' + esc(e.id) + '" value="' + esc(e.endedatum) + '"></label>' : '') +
+        '<div>Kinder: ' + (kinder || '–') + '</div></div>';
+    }).join('') : '<p class="leer">Noch keine Partner und keine Kinder eingetragen.</p>';
+    h += '<button type="button" id="bLoeschen" class="gefahr">Person löschen</button>';
+  } else if (ansicht === 'eltern') {
+    const pe = daten.ehen.find(e => e.kinder.indexOf(p.id) >= 0);
+    const platz = '<option value="">– bitte wählen –</option>';
+    const datumFeld = text => '<label>' + text + '<input type="date" id="eDatum"></label>';
+    const knoepfe = '<div class="reihe"><button type="button" id="eOk" class="primaer">Eltern zuordnen</button><button type="button" id="nAbbr">Abbrechen</button></div>';
+    h = '<div class="pkopf"><h2>Eltern von ' + esc(nameVon(p)) + '</h2></div>';
+    if (pe && pe.partner.length > 1) {
+      h += '<p>' + esc(nameVon(p)) + ' hat bereits Eltern – zum Ändern erst über × lösen (im Panel eines Elternteils, bei „Kinder“):</p>' +
+        '<p>' + pe.partner.map(person).filter(Boolean).map(pLink).join('') + '</p>' +
+        '<div class="reihe"><button type="button" id="nAbbr">Zurück</button></div>';
+    } else if (pe) {
+      // Ein Elternteil ist da: den zweiten ergänzen.
+      const kand = daten.personen.filter(q => q.id !== p.id && q.id !== pe.partner[0] && erlaubt(l => opZweiter(l, p.id, pe.id, q.id))).sort(nachName);
+      // Hat der eine Elternteil mehrere Kinder ohne zweiten Elternteil: fragen, für wen der zweite gelten soll.
+      const geschw = pe.kinder.map(person).filter(Boolean);
+      h += '<p>Bisher eingetragen: ' + pLink(person(pe.partner[0])) + '</p><h3>Zweiten Elternteil ergänzen</h3>' +
+        (geschw.length > 1 ? '<div class="wahl"><label><input type="radio" name="egelt" value="nur" checked> Nur für ' + esc(nameVon(p)) + '</label>' +
+          '<label><input type="radio" name="egelt" value="alle"> Für alle Kinder von ' + esc(nameVon(person(pe.partner[0]))) + ' ohne zweiten Elternteil (' + esc(geschw.map(nameVon).join(', ')) + ')</label></div>' : '') +
+        '<div class="wahl"><label><input type="radio" name="art" value="neu" checked> Neue Person anlegen</label>' +
+        '<label><input type="radio" name="art" value="best"' + (kand.length ? '' : ' disabled') + '> Bestehende Person wählen</label></div>' +
+        (kand.length ? '' : keinePerson()) +
+        '<div id="fNeu">' + felderHtml({ nachname: p.nachname }) + '</div>' +
+        '<div id="fBest" hidden><label>Person<select id="nBest">' + platz + kand.map(optionVon).join('') + '</select></label></div>' +
+        datumFeld('Heiratsdatum der Eltern (optional)') + knoepfe;
+    } else {
+      const kandP = daten.personen.filter(q => q.id !== p.id && erlaubt(l => opKind(l, p.id, '', [q.id]))).sort(nachName);
+      const eheName = e => e.partner.length > 1 ? e.partner.map(x => nameVon(person(x))).join(' und ') : 'Nur ' + nameVon(person(e.partner[0]));
+      const kandE = daten.ehen.filter(e => e.partner.indexOf(p.id) < 0 && e.partner.every(person) && erlaubt(l => opKind(l, p.id, e.id)))
+        .map(e => ({ id: e.id, name: eheName(e) })).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+      const elternteil = (titel, kz) => '<h3>' + titel + '</h3><label>Vorname<input type="text" id="e' + kz + 'vn"></label>' +
+        '<label>Nachname<input type="text" id="e' + kz + 'nn" value="' + esc(p.nachname) + '"></label>' +
+        '<div class="wahl"><label><input type="checkbox" id="e' + kz + 'tot"> verstorben, Datum unbekannt</label></div>';
+      h += '<div class="wahl"><label><input type="radio" name="eart" value="neu" checked> Neue Eltern anlegen</label>' +
+        '<label><input type="radio" name="eart" value="ehe"' + (kandE.length ? '' : ' disabled') + '> Bestehende Verbindung wählen</label>' +
+        '<label><input type="radio" name="eart" value="pers"' + (kandP.length ? '' : ' disabled') + '> Bestehende Person(en) wählen</label></div>' +
+        (kandP.length ? '' : keinePerson()) +
+        '<div id="eNeu"><p class="leer">Ein Elternteil reicht – ein leerer Vorname wird nicht angelegt. Weitere Angaben lassen sich danach eintragen.</p>' +
+        elternteil('Vater', 'V') + elternteil('Mutter', 'M') + '</div>' +
+        '<div id="eEhe" hidden><label>Verbindung<select id="eEheWahl">' + platz +
+        kandE.map(e => '<option value="' + esc(e.id) + '">' + esc(e.name) + '</option>').join('') + '</select></label></div>' +
+        '<div id="ePers" hidden><label>Erster Elternteil<select id="eP1">' + platz + kandP.map(optionVon).join('') + '</select></label>' +
+        '<label>Zweiter Elternteil (optional)<select id="eP2">' + platz + kandP.map(optionVon).join('') + '</select></label></div>' +
+        '<div id="eDat">' + datumFeld('Heiratsdatum der Eltern (optional, nur für eine neue Ehe)') + '</div>' + knoepfe;
+    }
+  } else {
+    const heirat = ansicht === 'heirat';
+    const partnerIds = es.map(e => e.partner.find(x => x !== p.id));
+    // Nicht wählbar: die Person selbst, ihre Partner und alle, bei denen die gemeinsame Prüfung sicher scheitert.
+    const ziele = es.filter(e => partnerVon(e)).map(e => e.id).concat(['']);
+    const kand = daten.personen.filter(q => q.id !== p.id && partnerIds.indexOf(q.id) < 0 && (heirat
+      ? erlaubt(l => opHeirat(l, p.id, q.id))
+      : ziele.some(w => erlaubt(l => opKind(l, q.id, w, [p.id]))))).sort(nachName);
+    h = '<div class="pkopf"><h2>' + (heirat ? 'Partner von ' : 'Kind von ') + esc(nameVon(p)) + '</h2></div>' +
+      '<div class="wahl"><label><input type="radio" name="art" value="neu" checked> Neue Person anlegen</label>' +
+      '<label><input type="radio" name="art" value="best"' + (kand.length ? '' : ' disabled') + '> Bestehende Person wählen</label></div>' +
+      (kand.length ? '' : keinePerson()) +
+      '<div id="fNeu">' + felderHtml({}) + '</div>' +
+      '<div id="fBest" hidden><label>Person<select id="nBest"><option value="">– bitte wählen –</option>' + kand.map(optionVon).join('') + '</select></label></div>';
+    if (heirat) h += '<label>Art<select id="nArt"><option value="ehe">Ehe</option><option value="partnerschaft">Partnerschaft</option></select></label>' +
+      '<label><span id="nDatumL">Heirat am</span><input type="date" id="nDatum"></label>' +
+      '<label><span id="nEndeL">Scheidung am</span> (optional)<input type="date" id="nEnde"></label>';
+    else {
+      const mitPartner = es.filter(e => partnerVon(e));
+      h += '<label>Eltern<select id="nEhe">' +
+        mitPartner.map(e => '<option value="' + esc(e.id) + '">' + esc(nameVon(p) + ' und ' + nameVon(partnerVon(e))) + '</option>').join('') +
+        '<option value="">Nur ' + esc(nameVon(p)) + ' (nur dieser Elternteil)</option></select></label>';
+    }
+    h += '<div class="reihe"><button type="button" id="nOk" class="primaer">' + (heirat ? 'Verbinden' : 'Kind hinzufügen') +
+      '</button><button type="button" id="nAbbr">Abbrechen</button></div>';
+  }
+  panel.innerHTML = h;
+  panel.scrollTop = oben;
+}
+function uebernehmen() {
+  const p = person(auswahl);
+  let neu = null, id, op;
+  if (panel.querySelector('input[name=art]:checked').value === 'neu') {
+    neu = lesePerson($('#fNeu'));
+    if (!neu) return;
+    id = neu.id;
+  } else {
+    id = $('#nBest').value;
+    if (!id || !person(id)) { alert('Bitte zuerst eine Person auswählen.'); return; }
+  }
+  if (ansicht === 'heirat') {
+    const datum = $('#nDatum').value, art = $('#nArt').value, ende = $('#nEnde').value;
+    op = l => opHeirat(l, p.id, id, datum, art, ende);
+  } else {
+    const wahl = $('#nEhe').value;
+    op = l => opKind(l, id, wahl, [p.id]);
+  }
+  if (!ausfuehren(op)) return;
+  if (neu) daten.personen.push(neu);
+  geaendert();
+  waehle(p.id);
+  zeige([id, p.id]);
+}
+function elternUebernehmen() {
+  const p = person(auswahl), pe = daten.ehen.find(e => e.kinder.indexOf(p.id) >= 0);
+  const datum = $('#eDatum').value, neue = [];
+  let op;
+  if (pe) {
+    let id;
+    if (panel.querySelector('input[name=art]:checked').value === 'neu') {
+      const n = lesePerson($('#fNeu'));
+      if (!n) return;
+      neue.push(n);
+      id = n.id;
+    } else {
+      id = $('#nBest').value;
+      if (!id || !person(id)) { alert('Bitte zuerst eine Person auswählen.'); return; }
+    }
+    const alle = !!panel.querySelector('input[name=egelt][value=alle]:checked');
+    op = l => opZweiter(l, p.id, pe.id, id, datum, alle);
+  } else {
+    const art = panel.querySelector('input[name=eart]:checked').value;
+    if (art === 'neu') {
+      ['V', 'M'].forEach(kz => {
+        const vn = $('#e' + kz + 'vn').value.trim();
+        if (vn) neue.push({ id: neueId('p'), vorname: vn, zweitname: '', nachname: $('#e' + kz + 'nn').value.trim(), geburtsdatum: '', sterbedatum: '', sterbedatumUnbekannt: $('#e' + kz + 'tot').checked, adresse: '', notiz: '' });
+      });
+      if (!neue.length) { alert('Bitte für mindestens einen Elternteil einen Vornamen eingeben.'); return; }
+      const ids = neue.map(n => n.id);
+      op = l => opKind(l, p.id, '', ids, datum);
+    } else if (art === 'ehe') {
+      const wahl = $('#eEheWahl').value;
+      if (!wahl) { alert('Bitte zuerst eine Verbindung auswählen.'); return; }
+      op = l => opKind(l, p.id, wahl);
+    } else {
+      const ids = [$('#eP1').value, $('#eP2').value].filter(Boolean);
+      if (!ids.length) { alert('Bitte zuerst eine Person auswählen.'); return; }
+      if (ids[0] === ids[1]) { alert('Bitte zwei verschiedene Personen wählen.'); return; }
+      op = l => opKind(l, p.id, '', ids, datum);
+    }
+  }
+  if (!ausfuehren(op)) return;
+  neue.forEach(n => daten.personen.push(n));
+  geaendert();
+  waehle(p.id);
+  zeige(daten.ehen.find(e => e.kinder.indexOf(p.id) >= 0).partner.concat([p.id]));
+}
+function loeseEhe(eid) {
+  const e = daten.ehen.find(x => x.id === eid);
+  if (!e) return;
+  const frage = (e.art === 'partnerschaft' ? 'Partnerschaft' : 'Ehe') + ' zwischen ' + e.partner.map(person).filter(Boolean).map(nameVon).join(' und ') + ' wirklich lösen?' +
+    (e.kinder.length ? ' Auch die Zuordnung der Kinder dieser Verbindung (' + e.kinder.length + ') wird entfernt.' : '') + ' Die Personen bleiben erhalten.';
+  if (!confirm(frage)) return;
+  daten.ehen = daten.ehen.filter(x => x !== e);
+  geaendert();
+  waehle(auswahl);
+}
+function loeseKind(eid, kid) {
+  const e = daten.ehen.find(x => x.id === eid), k = person(kid);
+  if (!e || !k) return;
+  if (!confirm('Kind-Verbindung zu ' + nameVon(k) + ' wirklich lösen? Die Person bleibt erhalten.')) return;
+  e.kinder = e.kinder.filter(x => x !== kid);
+  aufraeumen();
+  geaendert();
+  waehle(auswahl);
+}
+function loesche() {
+  const p = person(auswahl);
+  if (!confirm('„' + nameVon(p) + '“ wirklich löschen? Ehen und Kind-Verbindungen dieser Person werden mit entfernt.')) return;
+  daten.personen = daten.personen.filter(q => q.id !== p.id);
+  daten.ehen.forEach(e => {
+    e.partner = e.partner.filter(x => x !== p.id);
+    e.kinder = e.kinder.filter(x => x !== p.id);
+  });
+  aufraeumen();
+  geaendert();
+  waehle(null);
+}
+panel.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.p) waehle(b.dataset.p);
+  else if (b.dataset.le) loeseEhe(b.dataset.le);
+  else if (b.dataset.lk) loeseKind(b.dataset.von, b.dataset.lk);
+  else if (b.id === 'pZu') waehle(null);
+  else if (b.id === 'bHeirat' || b.id === 'bKind' || b.id === 'bEltern') { ansicht = { bHeirat: 'heirat', bKind: 'kind', bEltern: 'eltern' }[b.id]; zeigePanel(); }
+  else if (b.id === 'nAbbr') { ansicht = 'person'; zeigePanel(); }
+  else if (b.id === 'nOk') uebernehmen();
+  else if (b.id === 'eOk') elternUebernehmen();
+  else if (b.id === 'bLoeschen') loesche();
+});
+function panelEingabe(e) {
+  const t = e.target;
+  if (t.name === 'art') {
+    $('#fNeu').hidden = t.value !== 'neu';
+    $('#fBest').hidden = t.value === 'neu';
+  } else if (t.name === 'eart') {
+    $('#eNeu').hidden = t.value !== 'neu';
+    $('#eEhe').hidden = t.value !== 'ehe';
+    $('#ePers').hidden = t.value !== 'pers';
+    $('#eDat').hidden = t.value === 'ehe';
+  } else if (t.id === 'nArt') {
+    const part = t.value === 'partnerschaft';
+    $('#nDatumL').textContent = part ? 'Zusammen seit' : 'Heirat am';
+    $('#nEndeL').textContent = part ? 'Trennung am' : 'Scheidung am';
+  } else if (t.dataset.ehe || t.dataset.ende || t.dataset.eart) {
+    // Verbindung bearbeiten: Beginn-Datum, Ende-Datum oder Art (Ehe/Partnerschaft)
+    const feld = t.dataset.ehe ? 'heiratsdatum' : t.dataset.ende ? 'endedatum' : 'art';
+    const ehe = daten.ehen.find(x => x.id === (t.dataset.ehe || t.dataset.ende || t.dataset.eart));
+    if (ehe && ehe[feld] !== t.value) {
+      ehe[feld] = t.value;
+      geaendert(); zeichne();
+      if (feld === 'art') { // Beschriftungen der Datumsfelder wechseln; Scrollposition und Fokus bleiben
+        zeigePanel();
+        const s = Array.from(panel.querySelectorAll('[data-eart]')).find(x => x.dataset.eart === ehe.id);
+        if (s) s.focus({ preventScroll: true });
+      }
+    }
+  } else if (t.dataset.f && t.closest('#pFelder')) {
+    const p = person(auswahl);
+    const wert = t.type === 'checkbox' ? t.checked : t.value.trim();
+    if (p && p[t.dataset.f] !== wert) {
+      p[t.dataset.f] = wert;
+      if (p.sterbedatum) p.sterbedatumUnbekannt = false; // ein eingetragenes Datum gilt
+      $('#pName').textContent = nameVon(p);
+      geaendert(); zeichne();
+    }
+  }
+}
+// Haken „verstorben, Datum unbekannt“: sobald ein Sterbedatum eingetragen ist, wird er entfernt und gesperrt.
+document.addEventListener('input', e => {
+  if (!e.target.dataset || e.target.dataset.f !== 'sterbedatum') return;
+  const haken = e.target.closest('label').parentNode.querySelector('[data-f=sterbedatumUnbekannt]');
+  if (!haken) return;
+  if (e.target.value) haken.checked = false;
+  haken.disabled = !!e.target.value;
+});
+panel.addEventListener('input', panelEingabe);
+panel.addEventListener('change', panelEingabe);
+
+/* ---------- Kopfzeile / Start / Speichern ---------- */
+$('#titel').value = daten.titel || '';
+$('#titel').addEventListener('input', e => { daten.titel = e.target.value; geaendert(); });
+$('#b2d').addEventListener('click', () => setzeModus(false));
+$('#b3d').addEventListener('click', () => setzeModus(true));
+$('#zPlus').addEventListener('click', () => zoomKnopf(1.25));
+$('#zMinus').addEventListener('click', () => zoomKnopf(0.8));
+$('#zFit').addEventListener('click', () => einpassen(true));
+
+// Formular "Grundperson anlegen" (leerer Baum) bzw. "+ Person" (einzelne Person ohne Verbindung)
+$('#startFelder').innerHTML = felderHtml({});
+$('#bNeu').addEventListener('click', () => {
+  if (auswahl) waehle(null); // Panel schließen: es soll nur ein Formular offen sein, mit voller Fläche
+  neuDialog = true;
+  zeigeStart();
+  $('#start').scrollTop = 0;
+  $('#startFelder').querySelector('[data-f=vorname]').focus();
+});
+const startZu = () => { neuDialog = false; zeigeStart(); };
+$('#startAbbr').addEventListener('click', startZu);
+// Dialoge schließen: Escape oder Klick/Tipp neben das Formular wirkt wie "Abbrechen".
+let dlUrl = null; // Blob-Adresse der fertigen verschlüsselten Datei, solange der Dialog sie anbietet
+const sdZu = () => {
+  if ($('#sdOk').disabled) return; // während des Verschlüsselns offen lassen
+  $('#sdPw1').value = $('#sdPw2').value = '';
+  $('#speicherDialog').hidden = true;
+  if (dlUrl) { URL.revokeObjectURL(dlUrl); dlUrl = null; $('#sdLink').removeAttribute('href'); } // Blob beim Schließen freigeben
+};
+document.addEventListener('keydown', e => {
+  // Strg/Cmd+S: statt "Seite speichern" des Browsers (würde den sichtbaren Baum im Klartext sichern) den eigenen Dialog öffnen.
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 's') {
+    if (gesperrt) return;
+    e.preventDefault();
+    if ($('#speicherDialog').hidden) oeffneSpeichern();
+    return;
+  }
+  if (e.key !== 'Escape') return;
+  if (!$('#speicherDialog').hidden) sdZu();
+  else if (neuDialog && daten.personen.length) startZu();
+});
+let druckZiel = null;
+document.addEventListener('pointerdown', e => { druckZiel = e.target; });
+$('#speicherDialog').addEventListener('click', e => { if (e.target === e.currentTarget && druckZiel === e.target) sdZu(); });
+$('#start').addEventListener('click', e => { if (e.target === e.currentTarget && druckZiel === e.target && neuDialog && daten.personen.length) startZu(); });
+$('#startForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const p = neuePerson($('#startFelder'));
+  if (!p) return;
+  $('#startFelder').innerHTML = felderHtml({});
+  neuDialog = false;
+  geaendert();
+  waehle(p.id);
+  if (daten.personen.length === 1 || modus3d) einpassen(); // in 2D schiebt waehle() die neue Karte ins Bild
+});
+
+// block = verschlüsselter Datenblock; ohne Angabe werden die Daten im Klartext eingebettet.
+function speicherHtml(block) {
+  const kopie = vorlage.cloneNode(true);
+  // "<" maskieren, damit z. B. ein Script-Ende-Tag in einer Notiz den Datenblock nicht zerbricht.
+  kopie.querySelector('#stammbaum-daten').textContent = JSON.stringify(block || daten).replace(/</g, '\\u003c');
+  return '<!DOCTYPE html>\n' + kopie.outerHTML;
+}
+// Verschlüsselte Dateien bekommen einen neutralen Namen ohne Familiennamen.
+function dateiname(verschluesselt) {
+  const d = new Date(), zz = n => String(n).padStart(2, '0');
+  const nn = verschluesselt ? 'verschluesselt' : ((daten.personen[0] || {}).nachname || 'Familie').replace(/[^0-9A-Za-zÄÖÜäöüß-]+/g, '_');
+  return 'Stammbaum_' + nn + '_' + d.getFullYear() + '-' + zz(d.getMonth() + 1) + '-' + zz(d.getDate()) + '.html';
+}
+function gespeichert() {
+  offen = false;
+  $('#bSpeichern').classList.remove('offen');
+  $('#bSpeichern').title = '';
+}
+// Unverschlüsselt: direkter Download noch im Klick.
+function speichern() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([speicherHtml()], { type: 'text/html' }));
+  a.download = dateiname(false);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  gespeichert();
+  sdZu();
+}
+// Verschlüsselt: Die Datei ist erst nach der Schlüsselableitung fertig. Ein Download ohne eigenen Klick wird von
+// manchen Browsern blockiert – deshalb einen echten Link anbieten. Erst der Klick darauf gilt als gespeichert.
+function bieteDownload(block) {
+  dlUrl = URL.createObjectURL(new Blob([speicherHtml(block)], { type: 'text/html' }));
+  const a = $('#sdLink');
+  a.href = dlUrl;
+  a.download = dateiname(true);
+  $('#sdEingabe').hidden = true;
+  $('#sdOk').hidden = true;
+  $('#sdFertig').hidden = false;
+  a.focus();
+}
+$('#sdLink').addEventListener('click', () => {
+  gespeichert();
+  setTimeout(sdZu, 800); // kurz warten, damit der Browser den Download sicher begonnen hat
+});
+// Speichern-Dialog: unverschlüsselt wie bisher oder mit Passwort verschlüsselt.
+function sdAnpassen() {
+  const v = $('#sdVerschl').checked;
+  $('#sdBekannt').hidden = !(basis && v);
+  $('#sdPw').hidden = !(v && (!basis || $('#sdAendern').checked));
+  $('#sdWarnung').hidden = !v;
+  $('#sdEntf').hidden = !(basis && !v);
+}
+function oeffneSpeichern() {
+  if (gesperrt) return; // gesperrte Datei: nichts zu speichern
+  $('#sdVerschl').checked = !!basis; // geschützte Datei: Haken vorbelegt, bisheriges Passwort wird wiederverwendet
+  $('#sdAendern').checked = false;
+  $('#sdPw1').value = $('#sdPw2').value = '';
+  $('#sdStatus').textContent = '';
+  $('#sdEingabe').hidden = false;
+  $('#sdOk').hidden = false;
+  $('#sdFertig').hidden = true;
+  sdAnpassen();
+  $('#speicherDialog').hidden = false;
+  $('#sdVerschl').focus();
+}
+$('#bSpeichern').addEventListener('click', oeffneSpeichern);
+$('#sdVerschl').addEventListener('change', () => { sdAnpassen(); if (!$('#sdPw').hidden) $('#sdPw1').focus(); });
+$('#sdAendern').addEventListener('change', () => { sdAnpassen(); if (!$('#sdPw').hidden) $('#sdPw1').focus(); });
+$('#sdAbbr').addEventListener('click', sdZu);
+$('#sdForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const p1 = $('#sdPw1').value, p2 = $('#sdPw2').value, status = $('#sdStatus');
+  status.classList.remove('neutral');
+  $('#sdPw1').value = $('#sdPw2').value = ''; // Passwörter nicht im Dokument stehen lassen
+  if (gesperrt || !$('#sdFertig').hidden) return;
+  if (!$('#sdVerschl').checked) {
+    if (basis && !confirm('Verschlüsselung wirklich entfernen? Die gespeicherte Datei kann dann jeder ohne Passwort lesen.')) return;
+    basis = null;
+    speichern();
+    return;
+  }
+  if (!kannKrypto()) { status.textContent = 'Verschlüsseln ist in diesem Browser hier nicht möglich. Es wurde NICHT gespeichert.'; return; }
+  const neu = !basis || $('#sdAendern').checked;
+  if (neu && p1.length < 8) { status.textContent = 'Das Passwort muss mindestens 8 Zeichen haben. Es wurde nicht gespeichert.'; return; }
+  if (neu && p1 !== p2) { status.textContent = 'Die beiden Passwörter stimmen nicht überein. Es wurde nicht gespeichert.'; return; }
+  $('#sdOk').disabled = true;
+  status.textContent = 'Verschlüssele …';
+  status.classList.add('neutral'); // Fortschritt, kein Fehler
+  (async () => {
+    try {
+      const b = neu ? await basisAus(p1.normalize('NFC')) : basis; // Umlaute einheitlich kodieren
+      const block = await verschluessle(b, JSON.stringify(daten));
+      basis = b;
+      status.textContent = '';
+      bieteDownload(block);
+    } catch (err) { status.textContent = 'Das Verschlüsseln ist fehlgeschlagen. Es wurde NICHT gespeichert.'; }
+    status.classList.remove('neutral');
+    $('#sdOk').disabled = false;
+  })();
+});
+// Passwort-Bildschirm einer geschützten Datei
+$('#sperrForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const pw = $('#spPw').value, status = $('#spStatus');
+  $('#spPw').value = ''; // Passwort nicht im Dokument stehen lassen
+  status.classList.remove('neutral');
+  if (!pw) { status.textContent = 'Bitte das Passwort eingeben.'; return; }
+  if (!kannKrypto()) { status.textContent = 'Dieser Browser kann die Datei hier nicht entschlüsseln.'; return; }
+  $('#spOk').disabled = true;
+  status.textContent = 'Entschlüssele …';
+  status.classList.add('neutral'); // Fortschritt, kein Fehler
+  try {
+    // Umlaute einheitlich kodieren (NFC). Ältere Dateien können mit der unveränderten Eingabe verschlüsselt sein:
+    // schlägt NFC fehl und unterscheidet sich die Eingabe davon, wird sie einmal unverändert versucht.
+    const nfc = pw.normalize('NFC');
+    let b = await basisAus(nfc), klar;
+    try { klar = await entschluessle(b, gesperrt); } catch (err) {
+      if (nfc === pw) throw err;
+      b = await basisAus(pw);
+      klar = await entschluessle(b, gesperrt);
+    }
+    if (!uebernimm(JSON.parse(klar))) throw new Error('Inhalt');
+    basis = b;
+    gesperrt = null;
+    status.textContent = '';
+    $('#titel').value = daten.titel || '';
+    $('#sperre').hidden = true;
+    sperreHintergrund(false);
+    zeichne();
+    einpassen();
+  } catch (err) { status.textContent = 'Falsches Passwort oder beschädigte Datei. Bitte erneut versuchen.'; }
+  status.classList.remove('neutral');
+  $('#spOk').disabled = false;
+});
+window.addEventListener('beforeunload', e => {
+  if (offen) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// Solange die Datei gesperrt ist, sind Kopfzeile und Hauptbereich auch per Tastatur nicht erreichbar.
+function sperreHintergrund(an) {
+  document.querySelector('header').inert = an;
+  $('#haupt').inert = an;
+}
+zeichne();
+einpassen();
+if (gesperrt) {
+  sperreHintergrund(true);
+  $('#sperre').hidden = false;
+  if (!kannKrypto()) $('#spStatus').textContent = 'Dieser Browser kann die Datei hier nicht entschlüsseln. Bitte in einem aktuellen Browser öffnen.';
+  $('#spPw').focus();
+}
+</script><style>
+#speicherDialog{z-index:30}
+.odlg h2{margin-bottom:10px}
+#oWarte{z-index:40}
+#oWarte .kasten{text-align:center}
+#oRolle{flex:none;padding:4px 10px;border-radius:14px;background:#ffc857;color:#3a2a00;font-size:14px;font-weight:600;white-space:nowrap}
+#oSpeichern.offen::after{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:#e4572e;margin-left:8px}
+#oMenue{padding:0;font-size:22px;font-weight:600}
+#oBand{display:flex;align-items:center;gap:8px;padding:4px 4px 4px 12px;background:#fff4dd;color:#7a4200;font-size:14px;font-weight:600}
+#oBand.fehler{background:#fde7e5;color:#b3261e}
+#oBand span{flex:1;min-width:0}
+#oBand button{border:0;background:none;font-size:22px;padding:0}
+#oBandZu{order:2}
+#oBand #oBandAktion{flex:none;min-height:36px;padding:0 10px;border:1px solid currentColor;border-radius:8px;font-size:14px;font-weight:600}
+.oMenueListe button{display:block;width:100%;margin:8px 0;text-align:left}
+#oVerListe{max-height:50vh;overflow-y:auto}
+.oZeile{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #d8dee4}
+.oZeile span{flex:1;min-width:0}
+.oZeile small{display:block;color:#556}
+body.nurlesen #bNeu,body.nurlesen #oSpeichern,body.nurlesen #start,body.nurlesen #bHeirat,body.nurlesen #bKind,body.nurlesen #bEltern,body.nurlesen #bLoeschen,body.nurlesen .lz,body.nurlesen .nurB{display:none!important}
+@media (max-width:480px){
+  header{flex-wrap:wrap;justify-content:flex-end}
+  #titel{flex:1 0 100%}
+}
+</style>
+<div id="oTeile" hidden>
+  <span id="oRolle" hidden>Nur lesen</span>
+  <button type="button" id="oSpeichern">Speichern</button>
+  <button type="button" id="oMenue" aria-label="Menü" title="Menü">⋯</button>
+  <div id="oBand" role="status" hidden><span></span><button type="button" id="oBandZu" aria-label="Hinweis schließen">×</button><button type="button" id="oBandAktion" hidden></button></div>
+</div>
+<div id="oFehlt" class="deck odlg" hidden>
+  <div class="kasten"><h2>Stammbaum</h2><p id="oFehltText">Diese Seite ist noch nicht eingerichtet.</p></div>
+</div>
+<div id="oAnmeldung" class="deck odlg" hidden>
+  <form id="oAnForm" class="kasten">
+    <h2>Stammbaum</h2>
+    <p>Bitte das Passwort eingeben, um den Stammbaum zu öffnen.</p>
+    <label>Passwort<input type="password" id="oAnPw" autocomplete="off"></label>
+    <p id="oAnStatus" class="status" role="status"></p>
+    <div class="reihe"><button type="submit" class="primaer">Öffnen</button></div>
+  </form>
+</div>
+<div id="oEinrichten" class="deck odlg" hidden>
+  <form id="oEinForm" class="kasten">
+    <h2>Stammbaum einrichten</h2>
+    <p class="leer">Der Stammbaum ist noch nicht eingerichtet. Das kann nur, wer das Admin-Geheimnis aus den Skripteigenschaften kennt.</p>
+    <label>Admin-Geheimnis<input type="password" data-z="admin" autocomplete="off"></label>
+    <label>Lese-Passwort (mindestens 12 Zeichen, z. B. 4 zufällige Wörter)<input type="password" data-z="l1" autocomplete="new-password"></label>
+    <label>Lese-Passwort wiederholen<input type="password" data-z="l2" autocomplete="new-password"></label>
+    <label>Bearbeiten-Passwort (mindestens 12 Zeichen, z. B. 4 zufällige Wörter)<input type="password" data-z="b1" autocomplete="new-password"></label>
+    <label>Bearbeiten-Passwort wiederholen<input type="password" data-z="b2" autocomplete="new-password"></label>
+    <p class="leer">Tipp: je ein Satz aus vier zufälligen Wörtern. Das Bearbeiten-Passwort muss deutlich stärker sein als ein Familienname mit Jahreszahl.</p>
+    <div class="wahl">
+      <label><input type="radio" name="oEinArt" value="leer" checked> Leer beginnen</label>
+      <label><input type="radio" name="oEinArt" value="import"> Offline-Datei importieren</label>
+    </div>
+    <label id="oEinDateiL" hidden>Stammbaum-Datei (.html)<input type="file" id="oEinDatei" accept=".html,text/html"></label>
+    <p class="warnung">Passwörter vergessen = kein Zugriff mehr. Bitte sicher notieren.</p>
+    <p class="status" role="status"></p>
+    <div class="reihe"><button type="submit" class="primaer">Einrichten</button></div>
+  </form>
+</div>
+<div id="oPasswoerter" class="deck halb odlg" hidden>
+  <form id="oPwForm" class="kasten">
+    <h2>Passwörter ändern</h2>
+    <p class="leer">Es werden immer beide Passwörter neu gesetzt. Danach gelten nur noch die neuen. Ältere Versionen bleiben für Bearbeiter lesbar.</p>
+    <label>Admin-Geheimnis<input type="password" data-z="admin" autocomplete="off"></label>
+    <label>Neues Lese-Passwort (mindestens 12 Zeichen, z. B. 4 zufällige Wörter)<input type="password" data-z="l1" autocomplete="new-password"></label>
+    <label>Neues Lese-Passwort wiederholen<input type="password" data-z="l2" autocomplete="new-password"></label>
+    <label>Neues Bearbeiten-Passwort (mindestens 12 Zeichen, z. B. 4 zufällige Wörter)<input type="password" data-z="b1" autocomplete="new-password"></label>
+    <label>Neues Bearbeiten-Passwort wiederholen<input type="password" data-z="b2" autocomplete="new-password"></label>
+    <p class="warnung">Passwörter vergessen = kein Zugriff mehr. Bitte sicher notieren.</p>
+    <p class="status" role="status"></p>
+    <div class="reihe"><button type="submit" class="primaer">Ändern</button><button type="button" data-zu="#oPasswoerter">Abbrechen</button></div>
+  </form>
+</div>
+<div id="oMenueListe" class="deck halb odlg" hidden>
+  <div class="kasten oMenueListe">
+    <h2>Menü</h2>
+    <button type="button" id="oMSicherung">Sicherung herunterladen</button>
+    <button type="button" id="oMVersionen" class="nurB">Versionen</button>
+    <button type="button" id="oMImport" class="nurB">Offline-Datei importieren</button>
+    <button type="button" id="oMPasswoerter" class="nurB">Passwörter ändern</button>
+    <button type="button" data-zu="#oMenueListe">Schließen</button>
+    <input type="file" id="oImpDatei" accept=".html,text/html" hidden>
+  </div>
+</div>
+<div id="oVersionen" class="deck halb odlg" hidden>
+  <div class="kasten">
+    <h2>Versionen</h2>
+    <p class="leer">„Laden" holt eine Version in den Editor. Erst „Speichern" macht sie zur neuesten Version; keine Version wird gelöscht.</p>
+    <div id="oVerListe"></div>
+    <p id="oVerStatus" class="status" role="status"></p>
+    <div class="reihe"><button type="button" data-zu="#oVersionen">Schließen</button></div>
+  </div>
+</div>
+<div id="oKonflikt" class="deck halb odlg" hidden>
+  <div class="kasten oMenueListe">
+    <h2>Neuere Version vorhanden</h2>
+    <p id="oKonText"></p>
+    <button type="button" id="oKonDatei">Meine Fassung als Datei sichern</button>
+    <button type="button" id="oKonNeueste" class="primaer">Meine Fassung als neueste Version speichern</button>
+    <p class="leer" id="oKonHinweis"></p>
+    <button type="button" id="oKonLaden" class="gefahr">Neuen Stand laden, meine Änderungen verwerfen</button>
+    <p id="oKonStatus" class="status" role="status"></p>
+    <button type="button" data-zu="#oKonflikt">Abbrechen (weiter bearbeiten)</button>
+  </div>
+</div>
+<div id="oVeraltet" class="deck halb odlg" hidden>
+  <div class="kasten oMenueListe">
+    <h2>Bitte neu anmelden</h2>
+    <p>Die Passwörter wurden inzwischen geändert. Der Stand im Editor ist noch hier, kann aber nicht mehr gespeichert werden.</p>
+    <button type="button" id="oAltDatei">Meine Fassung als Datei sichern</button>
+    <button type="button" id="oAltNeu" class="primaer">Neu anmelden</button>
+  </div>
+</div>
+<div id="oSperre" class="deck halb odlg" hidden>
+  <div class="kasten oMenueListe">
+    <h2>Nicht gespeichert</h2>
+    <p id="oSpText"></p>
+    <button type="button" id="oSpDatei" class="primaer">Als Datei sichern</button>
+    <button type="button" data-zu="#oSperre">Schließen (später erneut speichern)</button>
+  </div>
+</div>
+<div id="oDateiPw" class="deck halb odlg" hidden>
+  <form id="oDpForm" class="kasten">
+    <h2>Die Datei ist geschützt</h2>
+    <label>Passwort der Datei<input type="password" id="oDpPw" autocomplete="off"></label>
+    <p id="oDpStatus" class="status" role="status"></p>
+    <div class="reihe"><button type="submit" class="primaer">Öffnen</button><button type="button" id="oDpAbbr">Abbrechen</button></div>
+  </form>
+</div>
+<div id="oWarte" class="deck halb odlg" hidden>
+  <div class="kasten"><p id="oWarteText" role="status"></p></div>
+</div>
+<script type="application/json" id="online-konfig">{"scriptUrl":"https://script.google.com/macros/s/AKfycbzRxsd3FpPAxRH3ktCTkJ9H8FKd__PPy47yoH-A8raxKO8VFK1MHkKjrA2_d7Py7REq/exec"}</script>
+<script>
+// Online-Teil. Steht hinter dem Editor-Skript: Dessen Vorlage für "Speichern" (vorlage) kennt diesen Teil nicht,
+// eine heruntergeladene Sicherung ist deshalb eine ganz normale Offline-Datei.
+// Alles Kryptografische passiert hier im Browser; der Server sieht nie Klartext und nie ein Passwort.
+(function () {
+  'use strict';
+  const ITER = 600000, MAX_RUMPF = 1000000; // wie in Code.gs
+  const TEXTE = {
+    netz: 'Keine Verbindung zum Server. Bitte Internet prüfen und erneut versuchen.',
+    falsches_passwort: 'Falsches Passwort.',
+    gesperrt: 'Zu viele Fehlversuche. Bitte in 10 Minuten erneut.',
+    nur_lesen: 'Mit diesem Passwort darf nur gelesen werden.',
+    konflikt: 'Inzwischen wurde eine neuere Version gespeichert. Bitte die Seite neu laden und erneut versuchen.',
+    schluessel_veraltet: 'Die Passwörter wurden inzwischen geändert. Bitte neu anmelden.',
+    beschaeftigt: 'Der Server ist gerade beschäftigt. Bitte gleich noch einmal versuchen.',
+    zu_gross: 'Der Stammbaum ist zu groß zum Speichern.',
+    zu_viel: 'Gerade wurde zu oft gespeichert. Bitte später erneut versuchen.',
+    datei_fehlt: 'Die Datei dieser Version wurde im Ordner nicht gefunden.',
+    admin_falsch: 'Das Admin-Geheimnis ist falsch.',
+    admin_fehlt: 'Im Skript fehlt die Eigenschaft ADMIN_GEHEIMNIS (mindestens 20 Zeichen).',
+    konfiguration: 'Der Server ist nicht fertig eingerichtet (ORDNER_ID fehlt oder ist falsch).',
+    nicht_eingerichtet: 'Der Stammbaum ist nicht eingerichtet. Bitte die Seite neu laden.',
+    ungueltig: 'Der Server hat die Anfrage abgelehnt.',
+    inhalt: 'Die Daten konnten nicht entschlüsselt werden.'
+  };
+  function fehler(code, antwort, anzeige) {
+    const e = new Error(code);
+    e.code = code; e.antwort = antwort || {}; e.anzeige = anzeige;
+    return e;
+  }
+  const meldung = e => (e && (e.anzeige || TEXTE[e.code])) || 'Fehler auf dem Server. Bitte später erneut versuchen.';
+
+  /* ---------- Transport: B (google.script.run) oder A (fetch an die fest eingetragene Adresse) ---------- */
+  let transport = null, imRahmen = false;
+  if (window.google && google.script && google.script.run) {
+    transport = text => new Promise((ok, fehl) => google.script.run.withSuccessHandler(ok).withFailureHandler(fehl).api(text));
+  } else if (window.top !== window.self) {
+    imRahmen = true; // Option A läuft nie eingebettet in einer fremden Seite
+  } else {
+    let url = '';
+    try { url = String(JSON.parse($('#online-konfig').textContent).scriptUrl || ''); } catch (e) { /* keine Adresse */ }
+    // Nur die Web-App-Adresse von Google; http nur für den lokalen Testserver.
+    if (/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$|^http:\/\/(127\.0\.0\.1|localhost):\d+\/exec$/.test(url)) {
+      transport = text => fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: text, credentials: 'omit', redirect: 'follow' })
+        .then(r => { if (!r.ok) throw new Error('HTTP'); return r.text(); });
+    }
+  }
+  async function ruf(obj) {
+    const text = JSON.stringify(obj);
+    if (text.length > MAX_RUMPF) throw fehler('zu_gross');
+    let a;
+    try { a = JSON.parse(await transport(text)); } catch (e) { throw fehler('netz'); }
+    if (!a || a.ok !== true) throw fehler(a && typeof a.fehler === 'string' ? a.fehler : 'intern', a);
+    return a;
+  }
+
+  /* ---------- Krypto (Entwurf 2.1, 2.2) ---------- */
+  const utf8 = t => new TextEncoder().encode(t);
+  const zufall = n => crypto.getRandomValues(new Uint8Array(n));
+  const neueSaveId = () => b64(zufall(12));
+  const iterOk = n => Number.isInteger(n) && n >= ITER && n <= 2000000;
+  // Passwort -> KEK (nicht auslesbar) und Token für den Server. Aus dem Token lässt sich der KEK nicht berechnen.
+  async function leite(pw, salt, iter) {
+    if (!iterOk(iter)) throw fehler('intern');
+    const p = await crypto.subtle.importKey('raw', utf8(pw.normalize('NFC')), 'PBKDF2', false, ['deriveBits']);
+    const master = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt, iterations: iter }, p, 256));
+    let hk;
+    try { hk = await crypto.subtle.importKey('raw', master, 'HKDF', false, ['deriveKey', 'deriveBits']); } finally { master.fill(0); }
+    const hkdf = info => ({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: utf8(info) });
+    const kek = await crypto.subtle.deriveKey(hkdf('stammbaum-online/kek/v1'), hk, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+    const token = b64(new Uint8Array(await crypto.subtle.deriveBits(hkdf('stammbaum-online/token/v1'), hk, 256)));
+    return { kek: kek, token: token };
+  }
+  async function verschl(key, u8) {
+    const iv = zufall(12);
+    return { iv: b64(iv), ct: b64(new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, u8))) };
+  }
+  const entschl = async (key, c) => new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(c.iv) }, key, unb64(c.ct)));
+  const dkAus = roh => crypto.subtle.importKey('raw', roh, 'AES-GCM', false, ['encrypt', 'decrypt']);
+  // Umschlag -> nicht auslesbarer Schlüssel; die Rohbytes werden sofort überschrieben.
+  async function auspacken(key, c) {
+    const roh = await entschl(key, c);
+    try { return await dkAus(roh); } finally { roh.fill(0); }
+  }
+  async function klartext(key, c) {
+    let d;
+    try { d = JSON.parse(new TextDecoder().decode(await entschl(key, c))); } catch (e) { throw fehler('inhalt'); }
+    if (!(d && Array.isArray(d.personen) && Array.isArray(d.ehen))) throw fehler('inhalt');
+    return d;
+  }
+
+  /* ---------- Zustand ---------- */
+  // Sitzung: { rolle, token, kek, dk, umschlag, alt, schluesselNr, basisNr } – nur CryptoKeys, Token und verschlüsselte Umschläge.
+  let S = null;
+  let onlineOk = false;   // nur ein gelungenes Online-Speichern/-Laden darf "offen" zurücksetzen
+  let ausstehend = null;  // letzter Speicherversuch { text, erwartet, saveId } für die Wiederholung nach Netzabbruch
+  let konfliktNr = 0;
+
+  /* ---------- Oberfläche: Kopfzeile, Dialoge, Hinweisband ---------- */
+  const kopf = document.querySelector('header');
+  const oSp = $('#oSpeichern'), bandEl = $('#oBand');
+  $('#bSpeichern').hidden = true;
+  kopf.append($('#oRolle'), oSp, $('#oMenue'));
+  kopf.after(bandEl);
+  document.title = 'Stammbaum';
+
+  const dialogOffen = () => !!document.querySelector('.odlg:not([hidden])');
+  function zeig(sel) {
+    $(sel).hidden = false;
+    sperreHintergrund(true);
+    const f = $(sel).querySelector('input:not([type=radio]):not([type=file]),button');
+    if (f) f.focus();
+  }
+  function zu(sel) {
+    $(sel).hidden = true;
+    if (S && !dialogOffen()) sperreHintergrund(false);
+  }
+  function warte(text) { $('#oWarteText').textContent = text; $('#oWarte').hidden = false; sperreHintergrund(true); }
+  let bandZeit = 0;
+  // aktion = { text, fn }: zusätzlicher Knopf im Band
+  let bandAktion = null;
+  function band(text, art, aktion) {
+    clearTimeout(bandZeit);
+    bandEl.firstElementChild.textContent = text || '';
+    bandEl.classList.toggle('fehler', art === 'fehler');
+    bandEl.hidden = !text;
+    bandAktion = (text && aktion) || null;
+    $('#oBandAktion').hidden = !bandAktion;
+    $('#oBandAktion').textContent = bandAktion ? bandAktion.text : '';
+    if (text && art === 'kurz') bandZeit = setTimeout(() => band(''), 6000);
+  }
+  $('#oBandZu').addEventListener('click', () => band(''));
+  $('#oBandAktion').addEventListener('click', () => { if (bandAktion) bandAktion.fn(); });
+  // Führt eine Aktion eines Formulars aus: Fortschritt und Fehler stehen im Status des Formulars.
+  async function lauf(form, text, fn) {
+    const status = form.querySelector('.status'), knopf = form.querySelector('[type=submit]');
+    status.textContent = text;
+    status.classList.add('neutral');
+    if (knopf) knopf.disabled = true;
+    try { await fn(); status.textContent = ''; } catch (e) { status.textContent = meldung(e); }
+    status.classList.remove('neutral');
+    if (knopf) knopf.disabled = false;
+  }
+  const beschaeftigt = sel => !!$(sel + ' [type=submit]:disabled');
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('[data-zu]');
+    if (b && !beschaeftigt(b.dataset.zu)) zu(b.dataset.zu);
+  });
+  // Escape schließt nur den obersten Dialog. In der Fangphase, also vor dem Editor: Ist dessen Speichern-Dialog
+  // offen, schließt der Editor ihn selbst und hier passiert nichts.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !$('#speicherDialog').hidden || !dialogOffen()) return;
+    e.stopPropagation(); // der Editor soll nicht zusätzlich sein Formular "+ Person" schließen
+    if (!$('#oDateiPw').hidden) { dpFertig(null); return; }
+    if (!$('#oWarte').hidden) return;
+    const s = ['#oSperre', '#oKonflikt', '#oPasswoerter', '#oVersionen', '#oMenueListe'].find(x => !$(x).hidden);
+    if (s && !beschaeftigt(s)) zu(s);
+  }, true);
+
+  /* ---------- Eingriffe in den Editor (Entwurf 5.2) ---------- */
+  const origOeffne = oeffneSpeichern, origGespeichert = gespeichert, origGeaendert = geaendert, origPanel = zeigePanel;
+  // Ein Sicherungs-Download gilt nicht als gespeichert.
+  gespeichert = function () {
+    if (!onlineOk) return;
+    origGespeichert();
+    oSp.classList.remove('offen');
+    oSp.title = '';
+  };
+  geaendert = function () {
+    if (!S || S.rolle !== 'bearbeiten') return;
+    origGeaendert();
+    oSp.classList.add('offen');
+    oSp.title = 'Ungespeicherte Änderungen';
+  };
+  zeigePanel = function () {
+    origPanel();
+    if (S && S.rolle !== 'bearbeiten') panel.querySelectorAll('input,select,textarea').forEach(el => { el.disabled = true; });
+  };
+  // Strg+S
+  oeffneSpeichern = function () {
+    if (!S || dialogOffen()) return;
+    if (S.rolle === 'bearbeiten') speichereOnline(S.basisNr); else sicherung();
+  };
+  function sauber() { onlineOk = true; gespeichert(); onlineOk = false; }
+  // Sicherung als Offline-Datei im bestehenden Format, im Klartext oder mit eigenem Datei-Passwort.
+  function sicherung() {
+    if (!S) return;
+    basis = null;
+    origOeffne();
+    $('#sdForm h2').textContent = 'Sicherung herunterladen';
+    $('#sdVerschl').checked = true;
+    sdAnpassen();
+    klarWarn.hidden = true;
+  }
+  // Deutliche Warnung, sobald der Haken "Mit Passwort verschlüsseln" entfernt wird.
+  const klarWarn = document.createElement('p');
+  klarWarn.id = 'oKlarWarn';
+  klarWarn.className = 'warnung';
+  klarWarn.hidden = true;
+  klarWarn.textContent = 'Achtung: Ohne Haken wird die Sicherung im Klartext gespeichert. Jeder, der die Datei bekommt, kann alle Namen, Daten und Notizen lesen.';
+  $('#sdEingabe').append(klarWarn);
+  $('#sdVerschl').addEventListener('change', () => { klarWarn.hidden = $('#sdVerschl').checked; });
+  function setzeRolle() {
+    const lesen = S.rolle !== 'bearbeiten';
+    document.body.classList.toggle('nurlesen', lesen);
+    $('#oRolle').hidden = !lesen;
+    $('#titel').readOnly = lesen;
+  }
+  // Billige Prüfung der Daten im Editor vor dem Zeichnen und vor dem Speichern, O(Personen + Einträge).
+  // Der Editor rechnet bei einem Kreis (jemand ist zugleich Vorfahre und Nachkomme) oder bei sehr vielen Personen
+  // sekunden- bis minutenlang – bei jeder Anmeldung, für alle. Solche Stände gelten als nicht darstellbar.
+  // Gerechnet wird wie in layout(): nur bekannte Personen, je Verbindung höchstens zwei Partner.
+  // Gemessen (Edge, Desktop): Der teuerste zulässige Fall ist eine einzige Familie mit allen Personen als Kindern,
+  // die Rechenzeit wächst quadratisch: 5000 Personen brauchen etwa 2,5 s, 3000 unter 1 s. Deshalb 3000.
+  const MAX_PERSONEN = 3000, MAX_EINTRAEGE = 12000, MAX_GENERATIONEN = 200;
+  const GRENZEN = 'höchstens ' + MAX_PERSONEN + ' Personen, ' + MAX_EINTRAEGE + ' Verbindungseinträge und ' + MAX_GENERATIONEN + ' Generationen, ohne Kreis in den Generationen';
+  function darstellbar() {
+    const P = daten.personen, E = daten.ehen;
+    if (P.length > MAX_PERSONEN || E.length > MAX_EINTRAEGE) return false;
+    let eintraege = 0;
+    for (const e of E) eintraege += e.partner.length + e.kinder.length;
+    if (eintraege > MAX_EINTRAEGE) return false;
+    // Partner bilden eine Gruppe (gleiche Generation)
+    const chef = new Map(P.map(p => [p.id, p.id]));
+    const finde = x => {
+      let r = x;
+      while (chef.get(r) !== r) r = chef.get(r);
+      while (chef.get(x) !== r) { const n = chef.get(x); chef.set(x, r); x = n; }
+      return r;
+    };
+    const F = [];
+    for (const e of E) {
+      const pa = e.partner.filter(id => chef.has(id)).slice(0, 2);
+      if (!pa.length) continue;
+      if (pa.length > 1) chef.set(finde(pa[1]), finde(pa[0]));
+      F.push({ a: pa[0], ki: e.kinder });
+    }
+    // Kanten Elterngruppe -> Kindgruppe, dann der Reihe nach abbauen (Kahn): Bleibt etwas übrig, gibt es einen Kreis.
+    const nach = new Map(), grad = new Map();
+    for (const f of F) {
+      const a = finde(f.a);
+      for (const k of f.ki) {
+        if (!chef.has(k)) continue;
+        const b = finde(k);
+        if (a === b) return false;
+        if (!nach.has(a)) nach.set(a, []);
+        nach.get(a).push(b);
+        grad.set(b, (grad.get(b) || 0) + 1);
+        if (!grad.has(a)) grad.set(a, 0);
+      }
+    }
+    const frei = [], tiefe = new Map();
+    grad.forEach((g, k) => { if (!g) { frei.push(k); tiefe.set(k, 0); } });
+    let n = 0;
+    while (frei.length) {
+      const a = frei.pop(), t = tiefe.get(a) + 1;
+      n++;
+      for (const b of nach.get(a) || []) {
+        if (t > (tiefe.get(b) || 0)) tiefe.set(b, t);
+        if (t >= MAX_GENERATIONEN) return false;
+        grad.set(b, grad.get(b) - 1);
+        if (!grad.get(b)) frei.push(b);
+      }
+    }
+    return n === grad.size;
+  }
+  // Zeigt die Daten an. Lässt sich ein Stand nicht darstellen (z. B. eine absichtlich riesige Kette, an der das
+  // Zeichnen scheitert), bleibt die Sitzung bestehen und der Baum leer: Bearbeiter kommen weiter an "Versionen".
+  function zeigDaten(passen) {
+    const zeig1 = () => {
+      $('#titel').value = daten.titel || '';
+      if (!person(auswahl)) auswahl = null;
+      zeigePanel();
+      zeichne();
+      if (passen) einpassen();
+    };
+    try {
+      if (!darstellbar()) throw new Error('Struktur');
+      zeig1();
+      return true;
+    } catch (e) {
+      uebernimm({ titel: '', personen: [], ehen: [] });
+      auswahl = null;
+      passen = true;
+      try { zeig1(); } catch (e2) { /* leerer Baum */ }
+      sauber(); // der leere Ersatz ist keine Änderung und wird nie gespeichert
+      band('Diese Version kann nicht dargestellt werden' + (S && S.rolle === 'bearbeiten' ? ' – Menü → Versionen' : '.'), 'fehler');
+      return false;
+    }
+  }
+
+  /* ---------- Laden ---------- */
+  async function holeInfo() {
+    const i = await ruf({ aktion: 'info' });
+    if (i.eingerichtet && !(typeof i.salt === 'string' && iterOk(i.iter))) throw fehler('intern');
+    return i;
+  }
+  // Holt und entschlüsselt die aktuelle Version, ändert aber noch nichts.
+  async function holeStand(sitz) {
+    const r = await sitzRuf({ aktion: 'lesen' }, sitz);
+    let dk;
+    try { dk = await auspacken(sitz.kek, r.umschlag); } catch (e) { throw fehler('inhalt'); }
+    return { r: r, dk: dk, d: await klartext(dk, r.daten) };
+  }
+  // Gibt false zurück, wenn der Stand geladen, aber nicht darstellbar ist (dann steht der Hinweis im Band).
+  function wendeAn(sitz, st, passen) {
+    if (!uebernimm(st.d)) throw fehler('inhalt');
+    sitz.rolle = st.r.rolle === 'bearbeiten' ? 'bearbeiten' : 'lesen';
+    sitz.dk = st.dk; sitz.umschlag = st.r.umschlag; sitz.alt = Array.isArray(st.r.alt) ? st.r.alt : [];
+    sitz.schluesselNr = st.r.schluesselNr; sitz.basisNr = st.r.nr;
+    S = sitz;
+    ausstehend = null;
+    setzeRolle();
+    sauber();
+    return zeigDaten(passen);
+  }
+  // Aufrufe einer laufenden Sitzung: Ein abgelehntes Token heißt, dass die Passwörter geändert wurden.
+  // Sendet Token, Schlüsselnummer und das letzte Ticket des Servers mit (Ticket nur im Arbeitsspeicher).
+  async function sitzRuf(obj, sitz) {
+    sitz = sitz || S;
+    obj.token = sitz.token;
+    if (sitz.ticket) obj.ticket = sitz.ticket;
+    if (obj.schluesselNr === undefined && Number.isInteger(sitz.schluesselNr)) obj.schluesselNr = sitz.schluesselNr;
+    try {
+      const r = await ruf(obj);
+      if (typeof r.ticket === 'string') sitz.ticket = r.ticket;
+      return r;
+    } catch (e) {
+      if (sitz === S && (e.code === 'falsches_passwort' || e.code === 'schluessel_veraltet')) { zeigeVeraltet(); e.anzeige = TEXTE.schluessel_veraltet; }
+      throw e;
+    }
+  }
+  function zeigeVeraltet() {
+    ['#oMenueListe', '#oVersionen', '#oPasswoerter', '#oKonflikt', '#oSperre'].forEach(s => { $(s).hidden = true; });
+    zeig('#oVeraltet');
+  }
+
+  /* ---------- Anmeldung ---------- */
+  $('#oAnForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const pw = $('#oAnPw').value;
+    $('#oAnPw').value = ''; // Passwort nicht im Dokument stehen lassen
+    if (!pw) { $('#oAnStatus').textContent = 'Bitte das Passwort eingeben.'; return; }
+    lauf(e.target, 'Öffne …', async () => {
+      const i = await holeInfo();
+      if (!i.eingerichtet) { $('#oAnmeldung').hidden = true; zeig('#oEinrichten'); return; }
+      const z = await leite(pw, unb64(i.salt), i.iter);
+      const sitz = { token: z.token, kek: z.kek, schluesselNr: i.schluesselNr };
+      const st = await holeStand(sitz);
+      band('');
+      wendeAn(sitz, st, true);
+      zu('#oAnmeldung');
+    });
+  });
+
+  /* ---------- Offline-Datei lesen (Einrichten und Menü) ---------- */
+  let dpAntwort = null;
+  let dpWarte = false; // der Warte-Hinweis lag offen: solange gefragt wird, weicht er (er würde den Dialog verdecken)
+  function frageDateiPw(hinweis) {
+    $('#oDpStatus').textContent = hinweis;
+    dpWarte = !$('#oWarte').hidden;
+    $('#oWarte').hidden = true;
+    zeig('#oDateiPw');
+    return new Promise(ok => { dpAntwort = ok; });
+  }
+  function dpFertig(wert) {
+    $('#oDpPw').value = '';
+    if (dpWarte) $('#oWarte').hidden = false;
+    dpWarte = false;
+    zu('#oDateiPw');
+    if (dpAntwort) { const f = dpAntwort; dpAntwort = null; f(wert); }
+  }
+  $('#oDpForm').addEventListener('submit', e => { e.preventDefault(); dpFertig($('#oDpPw').value); });
+  $('#oDpAbbr').addEventListener('click', () => dpFertig(null));
+  // Gibt die Daten der Datei zurück oder wirft mit einer klaren Meldung. Ändert nichts.
+  async function leseOfflineDatei(datei) {
+    const keine = () => fehler('datei', null, 'Das ist keine Stammbaum-Datei. Es wurde nichts geändert.');
+    if (datei.size > 20000000) throw keine();
+    let d;
+    try {
+      d = JSON.parse(new DOMParser().parseFromString(await datei.text(), 'text/html').querySelector('#stammbaum-daten').textContent);
+    } catch (e) { throw keine(); }
+    if (d && d.verschluesselt) {
+      for (let hinweis = ''; ; hinweis = 'Falsches Passwort oder beschädigte Datei. Bitte erneut versuchen.') {
+        const pw = await frageDateiPw(hinweis);
+        if (pw === null) throw fehler('abbruch', null, 'Abgebrochen. Es wurde nichts geändert.');
+        try {
+          // NFC wie im Editor; ältere Dateien können mit der unveränderten Eingabe verschlüsselt sein.
+          const nfc = pw.normalize('NFC');
+          let klar;
+          try { klar = await entschluessle(await basisAus(nfc), d); } catch (err) {
+            if (nfc === pw) throw err;
+            klar = await entschluessle(await basisAus(pw), d);
+          }
+          d = JSON.parse(klar);
+          break;
+        } catch (e) { /* erneut fragen */ }
+      }
+    }
+    if (!(d && Array.isArray(d.personen) && Array.isArray(d.ehen))) throw keine();
+    return d;
+  }
+
+  /* ---------- Einrichten und Passwortwechsel (Entwurf 2.6, 5.5) ---------- */
+  // Liest die fünf Felder, leert sie sofort und prüft sie.
+  function liesZugang(form) {
+    const w = {};
+    form.querySelectorAll('[data-z]').forEach(el => { w[el.dataset.z] = el.value.normalize('NFC'); el.value = ''; });
+    const f = t => fehler('eingabe', null, t);
+    if (!w.admin) throw f('Bitte das Admin-Geheimnis eingeben.');
+    // Länger als im Offline-Editor: Wer eine Versionsdatei in die Hand bekommt, kann Passwörter ohne Bremse durchprobieren.
+    if (w.l1.length < 12 || w.b1.length < 12) throw f('Beide Passwörter müssen mindestens 12 Zeichen haben, z. B. 4 zufällige Wörter.');
+    if (w.l1 !== w.l2) throw f('Die beiden Lese-Passwörter stimmen nicht überein.');
+    if (w.b1 !== w.b2) throw f('Die beiden Bearbeiten-Passwörter stimmen nicht überein.');
+    if (w.l1 === w.b1) throw f('Lese-Passwort und Bearbeiten-Passwort müssen verschieden sein.');
+    return { admin: w.admin, l: w.l1, b: w.b1 };
+  }
+  // Setzt beide Passwörter, ein neues Salt und einen neuen Datenschlüssel; legt die Daten im Editor als neue Version ab.
+  async function setzeZugang(z, erwartet) {
+    const salt = zufall(16);
+    const L = await leite(z.l, salt, ITER), B = await leite(z.b, salt, ITER);
+    const roh = zufall(32);
+    let dk, uL, uB;
+    try {
+      uL = await verschl(L.kek, roh);
+      uB = await verschl(B.kek, roh);
+      dk = await dkAus(roh);
+    } finally { roh.fill(0); }
+    // Frühere Datenschlüssel mit dem neuen verschlüsseln: alte Versionen bleiben ohne alte Passwörter lesbar.
+    let alt = [];
+    if (S) {
+      const pack = async (nr, altRoh) => {
+        try { alt.push(Object.assign({ schluesselNr: nr }, await verschl(dk, altRoh))); } finally { altRoh.fill(0); }
+      };
+      await pack(S.schluesselNr, await entschl(S.kek, S.umschlag));
+      for (const e of S.alt) await pack(e.schluesselNr, await entschl(S.dk, e));
+      alt = alt.slice(0, 50);
+    }
+    // Immer eine neue saveId: Eine Wiederholung hätte ein anderes Salt als der erste Versuch.
+    const r = await ruf({
+      aktion: 'admin_setzen', admin: z.admin, erwartet: erwartet, saveId: neueSaveId(),
+      zugang: { salt: b64(salt), iter: ITER, lesenToken: L.token, bearbeitenToken: B.token, umschlagLesen: uL, umschlagBearbeiten: uB, alt: alt },
+      daten: await verschl(dk, utf8(JSON.stringify(daten)))
+    });
+    // Das alte Ticket gilt nach einem Passwortwechsel nicht mehr.
+    S = { rolle: 'bearbeiten', token: B.token, kek: B.kek, dk: dk, umschlag: uB, alt: alt, schluesselNr: r.schluesselNr, basisNr: r.nr, ticket: typeof r.ticket === 'string' ? r.ticket : '' };
+    ausstehend = null;
+    setzeRolle();
+    sauber();
+  }
+  $('#oEinForm').addEventListener('change', () => { $('#oEinDateiL').hidden = $('#oEinForm').oEinArt.value !== 'import'; });
+  $('#oEinForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const form = e.target, status = form.querySelector('.status');
+    let z;
+    try { z = liesZugang(form); } catch (err) { status.textContent = meldung(err); return; }
+    const datei = form.oEinArt.value === 'import' ? $('#oEinDatei').files[0] : null;
+    if (form.oEinArt.value === 'import' && !datei) { status.textContent = 'Bitte eine Stammbaum-Datei auswählen.'; return; }
+    lauf(form, 'Richte ein …', async () => {
+      const d = datei ? await leseOfflineDatei(datei) : { titel: '', personen: [], ehen: [] };
+      if (!uebernimm(d)) throw fehler('inhalt');
+      if (!darstellbar()) throw fehler('datei', null, 'Diese Datei kann online nicht dargestellt werden (' + GRENZEN + '). Es wurde nichts eingerichtet.');
+      await setzeZugang(z, 0);
+      zu('#oEinrichten');
+      if (zeigDaten(true)) band('Eingerichtet: Version ' + S.basisNr + ' ist gespeichert. Du bist als Bearbeiter angemeldet.', 'kurz');
+    });
+  });
+  $('#oPwForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const form = e.target, status = form.querySelector('.status');
+    let z;
+    try { z = liesZugang(form); } catch (err) { status.textContent = meldung(err); return; }
+    if (!S || S.rolle !== 'bearbeiten') { status.textContent = TEXTE.nur_lesen; return; }
+    if (offen) { status.textContent = 'Bitte zuerst die Änderungen speichern.'; return; }
+    lauf(form, 'Ändere Passwörter …', async () => {
+      try { await setzeZugang(z, S.basisNr); } catch (err) {
+        if (err.code === 'falsches_passwort') zeigeVeraltet();
+        throw err;
+      }
+      zu('#oPasswoerter');
+      band('Die Passwörter sind geändert (Version ' + S.basisNr + '). Ab jetzt gelten nur noch die neuen.');
+    });
+  });
+
+  /* ---------- Speichern und Konflikt (Entwurf 3.3, 4) ---------- */
+  async function speichereOnline(erwartet) {
+    if (!S || S.rolle !== 'bearbeiten' || !$('#oWarte').hidden) return false;
+    if (!offen) { band('Keine Änderungen – es wurde nichts gespeichert.', 'kurz'); return false; }
+    // Nie einen Stand speichern, den danach niemand mehr öffnen könnte.
+    if (!darstellbar()) { band('Nicht gespeichert: Der Stammbaum ist für die Online-Ansicht zu groß oder widersprüchlich (' + GRENZEN + '). Die Änderungen sind noch hier.', 'fehler'); return false; }
+    const text = JSON.stringify(daten);
+    const sende = async v => sitzRuf({
+      aktion: 'speichern', erwartet: v.erwartet, schluesselNr: S.schluesselNr, saveId: v.saveId,
+      daten: await verschl(S.dk, utf8(v.text))
+    });
+    warte('Speichere …');
+    try {
+      let r = null;
+      if (ausstehend) {
+        // Ein früherer Versuch blieb ohne Antwort. Immer zuerst diesen Versuch mit seiner saveId klären
+        // (angekommen: der Server nennt seine Nummer; nicht angekommen: er wird jetzt gespeichert).
+        // Sonst gäbe es einen Konflikt gegen die eigene Version.
+        const alt = ausstehend, r0 = await sende(alt);
+        ausstehend = null;
+        S.basisNr = erwartet = r0.nr;
+        if (alt.text === text) r = r0; // der Inhalt ist derselbe: damit ist alles gespeichert
+      }
+      if (!r) {
+        ausstehend = { text: text, erwartet: erwartet, saveId: neueSaveId() };
+        r = await sende(ausstehend);
+        ausstehend = null;
+      }
+      S.basisNr = r.nr;
+      sauber();
+      $('#oKonflikt').hidden = true;
+      band('Gespeichert als Version ' + r.nr + '.', 'kurz');
+      return true;
+    } catch (e) {
+      if (e.code !== 'netz') ausstehend = null; // der Server hat geantwortet: Es wurde sicher nichts gespeichert
+      if (e.code === 'konflikt') zeigeKonflikt(e.antwort.nr);
+      else if (e.code === 'gesperrt' || e.code === 'zu_viel') {
+        const min = Number.isFinite(e.antwort.warteSek) ? Math.max(1, Math.ceil(e.antwort.warteSek / 60)) : 0;
+        $('#oSpText').textContent = (e.code === 'zu_viel'
+          ? 'Gerade wurde zu oft gespeichert. Der Server nimmt gerade keine weitere Version an.'
+          : 'Wegen zu vieler Fehlversuche nimmt der Server gerade nichts an.') +
+          ' Deine Änderungen sind noch hier. Bitte ' + (!min ? 'später' : min >= 120 ? 'in etwa ' + Math.ceil(min / 60) + ' Stunden' : 'in etwa ' + min + ' Minuten') + ' erneut speichern und die Seite so lange offen lassen – oder die Fassung als Datei sichern.';
+        $('#oKonflikt').hidden = true;
+        zeig('#oSperre');
+      } else if (e.code !== 'falsches_passwort' && e.code !== 'schluessel_veraltet') {
+        // Im Konfliktdialog steht die Meldung im Dialog, sonst läge sie verdeckt dahinter.
+        const t = 'Nicht gespeichert, Änderungen sind noch hier. ' + meldung(e);
+        if ($('#oKonflikt').hidden) band(t, 'fehler'); else $('#oKonStatus').textContent = t;
+      }
+      return false;
+    } finally { zu('#oWarte'); }
+  }
+  function zeigeKonflikt(nr) {
+    konfliktNr = nr;
+    $('#oKonText').textContent = 'Inzwischen wurde Version ' + nr + ' gespeichert. Deine Änderungen sind noch hier.';
+    $('#oKonHinweis').textContent = 'Die fremde Version ' + nr + ' bleibt in der Versionsliste, ihre Änderungen sind aber nicht im neuen Stand.';
+    $('#oKonStatus').textContent = '';
+    zeig('#oKonflikt');
+  }
+  oSp.addEventListener('click', () => speichereOnline(S.basisNr));
+  $('#oKonDatei').addEventListener('click', sicherung);
+  $('#oAltDatei').addEventListener('click', sicherung);
+  $('#oSpDatei').addEventListener('click', sicherung);
+  $('#oKonNeueste').addEventListener('click', () => speichereOnline(konfliktNr));
+  $('#oKonLaden').addEventListener('click', async () => {
+    if (!confirm('Deine ungespeicherten Änderungen gehen verloren. Neuen Stand wirklich laden?')) return;
+    warte('Lade …');
+    try {
+      if (wendeAn(S, await holeStandSitz())) band('Neuer Stand geladen (Version ' + S.basisNr + ').', 'kurz');
+      $('#oKonflikt').hidden = true;
+    } catch (e) { $('#oKonStatus').textContent = meldung(e); }
+    zu('#oWarte');
+  });
+  const holeStandSitz = () => holeStand(S);
+  // Neu anmelden ohne Neuladen der Seite (in Option B läuft die Seite in einem iframe).
+  $('#oAltNeu').addEventListener('click', () => {
+    if (offen && !confirm('Deine ungespeicherten Änderungen gehen beim Anmelden verloren. Fortfahren?')) return;
+    S = null;
+    $('#oVeraltet').hidden = true;
+    band('');
+    zeig('#oAnmeldung');
+  });
+
+  /* ---------- Früherkennung einer neueren Version ---------- */
+  async function pruefeNeu() {
+    const ruhig = () => S && !document.hidden && !dialogOffen() && $('#speicherDialog').hidden;
+    if (!ruhig()) return;
+    try {
+      const i = await holeInfo();
+      if (!ruhig()) return;
+      if (!i.eingerichtet || i.schluesselNr !== S.schluesselNr) { zeigeVeraltet(); return; }
+      if (i.nr === S.basisNr) return;
+      if (offen) { band('Es gibt eine neuere Version – beim Speichern wirst du gefragt.'); return; }
+      // Nie mitten in einer Eingabe neu laden: offenes Formular (Partner/Kind/Eltern, neue Person) oder Feld mit Fokus.
+      const a = document.activeElement;
+      const eingabe = () => ansicht !== 'person' || neuDialog || (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && !a.readOnly);
+      if (eingabe()) { band('Es gibt eine neuere Version. Sie wird geladen, sobald das Formular geschlossen ist.'); return; }
+      const st = await holeStandSitz();
+      if (!ruhig() || offen || eingabe()) return;
+      if (wendeAn(S, st)) band('Neuer Stand geladen (Version ' + S.basisNr + ').', 'kurz');
+    } catch (e) { /* kein Netz: beim nächsten Mal */ }
+  }
+  document.addEventListener('visibilitychange', pruefeNeu);
+  setInterval(pruefeNeu, 120000);
+
+  /* ---------- Menü, Versionen, Import ---------- */
+  $('#oMenue').addEventListener('click', () => zeig('#oMenueListe'));
+  $('#oMSicherung').addEventListener('click', () => { zu('#oMenueListe'); sicherung(); });
+  const darfB = () => !!S && S.rolle === 'bearbeiten';
+  $('#oMPasswoerter').addEventListener('click', () => {
+    if (!darfB()) return;
+    $('#oPwForm .status').textContent = offen ? 'Bitte zuerst die Änderungen speichern.' : '';
+    $('#oMenueListe').hidden = true;
+    zeig('#oPasswoerter');
+  });
+  $('#oMVersionen').addEventListener('click', async () => {
+    if (!darfB()) return;
+    const liste = $('#oVerListe'), status = $('#oVerStatus');
+    liste.textContent = '';
+    status.textContent = 'Lade …';
+    status.classList.add('neutral');
+    $('#oMenueListe').hidden = true;
+    zeig('#oVersionen');
+    try {
+      const r = await sitzRuf({ aktion: 'versionen' });
+      r.versionen.forEach(v => {
+        const zeile = document.createElement('div'), text = document.createElement('span'), klein = document.createElement('small'), knopf = document.createElement('button');
+        zeile.className = 'oZeile';
+        const zeit = new Date(v.zeit);
+        text.textContent = 'Version ' + v.nr;
+        klein.textContent = (isNaN(zeit) ? String(v.zeit) : zeit.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' })) + (v.nr === r.aktuell ? ' · aktuell' : '');
+        text.append(klein);
+        knopf.type = 'button';
+        knopf.textContent = 'Laden';
+        knopf.addEventListener('click', () => ladeVersion(v));
+        zeile.append(text, knopf);
+        liste.append(zeile);
+      });
+      status.textContent = '';
+    } catch (e) { status.textContent = meldung(e); }
+    status.classList.remove('neutral');
+  });
+  // Lädt eine ältere Version als ungespeicherte Änderung; erst "Speichern" macht sie zur neuesten Version.
+  async function ladeVersion(v) {
+    const status = $('#oVerStatus');
+    if (offen && !confirm('Du hast ungespeicherte Änderungen. Sie gehen verloren, wenn du Version ' + v.nr + ' lädst. Fortfahren?')) return;
+    warte('Lade Version ' + v.nr + ' …');
+    try {
+      const r = await sitzRuf({ aktion: 'lesen', id: v.id });
+      let key = S.dk;
+      if (r.schluesselNr !== S.schluesselNr) {
+        const e = S.alt.find(x => x.schluesselNr === r.schluesselNr);
+        if (!e) throw fehler('alt', null, 'Diese Version stammt aus einer früheren Einrichtung und lässt sich hier nicht öffnen.');
+        try { key = await auspacken(S.dk, e); } catch (err) { throw fehler('inhalt'); }
+      }
+      if (!uebernimm(await klartext(key, r.daten))) throw fehler('inhalt');
+      $('#oVersionen').hidden = true;
+      zu('#oWarte');
+      band('');
+      if (!zeigDaten(true)) {
+        // Der Baum ist jetzt leer, die aktuelle Version auf dem Server aber in Ordnung: zurück dorthin anbieten.
+        if (r.nr !== S.basisNr) band('Diese ältere Version (' + r.nr + ') kann nicht dargestellt werden.', 'fehler', { text: 'Aktuelle Version laden', fn: ladeAktuell });
+        return;
+      }
+      if (r.nr === S.basisNr) sauber();
+      else { geaendert(); band('Version ' + r.nr + ' geladen – mit Speichern wird sie zur neuesten Version.'); }
+    } catch (e) { status.textContent = meldung(e); zu('#oWarte'); }
+  }
+  async function ladeAktuell() {
+    if (!S || dialogOffen()) return;
+    warte('Lade …');
+    try {
+      if (wendeAn(S, await holeStandSitz(), true)) band('Aktuelle Version ' + S.basisNr + ' geladen.', 'kurz');
+    } catch (e) { band(meldung(e), 'fehler', { text: 'Aktuelle Version laden', fn: ladeAktuell }); }
+    zu('#oWarte');
+  }
+  $('#oMImport').addEventListener('click', () => { if (darfB()) $('#oImpDatei').click(); });
+  $('#oImpDatei').addEventListener('change', async e => {
+    const datei = e.target.files[0];
+    e.target.value = '';
+    if (!datei || !darfB()) return;
+    $('#oMenueListe').hidden = true;
+    warte('Lese Datei …');
+    try {
+      const d = await leseOfflineDatei(datei);
+      if (confirm('Die Daten im Editor werden durch die Datei ersetzt (' + d.personen.length + ' Personen). Erst „Speichern“ macht daraus eine neue Version. Fortfahren?')) {
+        const vorher = daten;
+        if (!uebernimm(d)) throw fehler('inhalt');
+        if (!darstellbar()) { daten = vorher; throw fehler('datei', null, 'Diese Datei kann online nicht dargestellt werden (' + GRENZEN + '). Es wurde nichts geändert.'); }
+        zu('#oWarte');
+        if (zeigDaten(true)) {
+          geaendert();
+          band('Datei importiert – mit Speichern wird sie zur neuesten Version.');
+        }
+      }
+    } catch (err) { band(meldung(err), 'fehler'); }
+    zu('#oWarte');
+  });
+
+  /* ---------- Start (Entwurf 5.3, 5.4) ---------- */
+  sperreHintergrund(true);
+  if (!transport || !kannKrypto()) {
+    if (imRahmen) $('#oFehltText').textContent = 'Diese Seite lässt sich nicht eingebettet in einer anderen Seite öffnen. Bitte den Link direkt im Browser öffnen.';
+    else if (transport) $('#oFehltText').textContent ='Dieser Browser kann hier nicht entschlüsseln. Bitte die Seite in einem aktuellen Browser über https öffnen.';
+    $('#oFehlt').hidden = false;
+    return;
+  }
+  zeig('#oAnmeldung');
+  holeInfo().then(i => {
+    if (!i.eingerichtet && !S && !$('#oAnmeldung').hidden) { $('#oAnmeldung').hidden = true; zeig('#oEinrichten'); }
+  }, e => { if (!S) $('#oAnStatus').textContent = meldung(e); });
+})();
+</script>
+</body></html>
